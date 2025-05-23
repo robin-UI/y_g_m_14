@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+// import localFont from "next/font/local";
 import "./globals.css";
+import Header from "@/components/layout/Header";
+import Footer from "@/components/layout/Footer";
+import ChatIcon from "@/components/chat/ChatIcon";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+// const geistSans = localFont({
+//   src: "./fonts/GeistVF.woff",
+//   variable: "--font-geist-sans",
+//   weight: "100 900",
+// });
+// const geistMono = localFont({
+//   src: "./fonts/GeistMonoVF.woff",
+//   variable: "--font-geist-mono",
+//   weight: "100 900",
+// });
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -24,10 +28,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className="flex flex-col min-h-screen bg-grey-100/30">
+        <Header />
         {children}
+        <ChatIcon />
+        <Footer />
       </body>
     </html>
   );
