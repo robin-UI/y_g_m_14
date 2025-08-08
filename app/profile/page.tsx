@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 // import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -53,21 +53,11 @@ function Profile() {
       resolver: zodResolver(profileFormSchema),
       defaultValues,
     });
-  
-    // Redirect to login if not authenticated
-    useEffect(() => {
-      // In a real app with Supabase, you would check authentication status here
-      // For demonstration, we're setting it to true
-      setIsAuthenticated(true);
-      
-      // Calculate profile completion based on filled fields
-      calculateProfileCompletion(form.getValues());
-    }, []);
-  
+
     // Calculate profile completion percentage
-    const calculateProfileCompletion = (values: Partial<ProfileFormValues>) => {
+    const calculateProfileCompletion = useCallback((values: Partial<ProfileFormValues>) => {
       const totalFields = Object.keys(profileFormSchema.shape).length;
-      const filledFields = Object.entries(values).filter(([_, value]) => 
+      const filledFields = Object.entries(values).filter(([, value]) => 
         value && value.toString().trim() !== ""
       ).length;
       
@@ -77,7 +67,18 @@ function Profile() {
       // Calculate percentage (minimum 20% just for having an account)
       const percentage = Math.min(100, 20 + Math.floor((filledFields / totalFields) * 70) + imageBonus);
       setProfileCompletion(percentage);
-    };
+    }, [profileImage]);
+  
+    // Redirect to login if not authenticated  
+    useEffect(() => {
+      // In a real app with Supabase, you would check authentication status here
+      // For demonstration, we're setting it to true
+      setIsAuthenticated(true);
+      
+      // Calculate profile completion based on filled fields
+      calculateProfileCompletion(form.getValues());
+    }, [calculateProfileCompletion, form]);
+  
   
     // Watch form changes to update progress
     useEffect(() => {

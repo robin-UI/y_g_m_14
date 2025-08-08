@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, LogOut, UserRound, ChevronDown, Video, VideoIcon } from "lucide-react";
+import { Menu, X, LogOut, UserRound, ChevronDown, VideoIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {

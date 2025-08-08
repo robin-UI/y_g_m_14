@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Star } from 'lucide-react';
+import Image from 'next/image';
 
 type Testimonial = {
   id: number;
@@ -91,9 +92,16 @@ const TestimonialsSection = () => {
                   <div className="bg-white p-8 rounded-xl shadow-md border border-grey-100">
                     <div className="flex flex-col md:flex-row md:items-start gap-6">
                       <div className="flex-shrink-0">
-                        <img 
+                        {/* <img 
                           src={testimonial.imageUrl} 
                           alt={testimonial.name} 
+                          className="w-20 h-20 rounded-full object-cover border-2 border-primary"
+                        /> */}
+                        <Image
+                          src={testimonial.imageUrl}
+                          alt={testimonial.name}
+                          width={80}
+                          height={80}
                           className="w-20 h-20 rounded-full object-cover border-2 border-primary"
                         />
                       </div>

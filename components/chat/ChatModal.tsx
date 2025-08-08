@@ -9,9 +9,9 @@ import moment from "moment";
 import styles from "./chatLoading.module.css";
 import Markdown from "react-markdown";
 
-interface ChatModalProps {
-  onClose: () => void;
-}
+// interface ChatModalProps {
+//   onClose: () => void;
+// }
 
 interface Message {
   id: string;
@@ -20,7 +20,7 @@ interface Message {
   timestamp: string;
 }
 
-const ChatModal = ({ onClose }: ChatModalProps) => {
+const ChatModal = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",

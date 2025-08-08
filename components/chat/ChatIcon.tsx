@@ -15,7 +15,7 @@ const ChatIcon = () => {
 
   return (
     <div className="fixed bottom-6 right-6 z-50">
-      {isChatOpen && <ChatModal onClose={() => setIsChatOpen(false)} />}
+      {isChatOpen && <ChatModal  />}
       
       <Button
         onClick={toggleChat}

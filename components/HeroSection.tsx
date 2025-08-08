@@ -1,6 +1,7 @@
 
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
+import Image from 'next/image';
 
 const HeroSection = () => {
   return (
@@ -36,16 +37,24 @@ const HeroSection = () => {
             <div className="absolute -z-10 w-64 h-64 bg-secondary/20 rounded-full blur-3xl bottom-10 left-10"></div>
             <div className="w-full h-[400px] md:h-[500px] rounded-xl backdrop-blur-md bg-white/40 border border-white/30 shadow-xl overflow-hidden relative">
               <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-white/30 backdrop-blur-sm"></div>
-              <img 
+              {/* <img 
                 src="https://images.unsplash.com/photo-1531545514256-b1400bc00f31?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MTB8fG1lbnRvcnNoaXB8ZW58MHx8MHx8&auto=format&fit=crop&w=800&q=60" 
                 alt="Mentorship session" 
+                className="object-cover h-full w-full rounded-xl mix-blend-overlay"
+              /> */}
+              <Image
+                src="https://images.unsplash.com/photo-1531545514256-b1400bc00f31?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MTB8fG1lbnRvcnNoaXB8ZW58MHx8MHx8&auto=format&fit=crop&w=800&q=60"
+                alt="Mentorship session"
+                fill
                 className="object-cover h-full w-full rounded-xl mix-blend-overlay"
               />
               <div className="absolute bottom-6 left-6 right-6 bg-white/70 backdrop-blur-md rounded-lg p-4 shadow-lg border border-white/50 hover:bg-white/80 transition-all duration-300">
                 <div className="flex items-center space-x-3">
-                  <img 
-                    src="https://randomuser.me/api/portraits/women/23.jpg" 
-                    alt="Mentor" 
+                  <Image
+                    src="https://randomuser.me/api/portraits/women/23.jpg"
+                    alt="Mentor"
+                    width={48}
+                    height={48}
                     className="w-12 h-12 rounded-full border-2 border-primary"
                   />
                   <div>

@@ -9,6 +9,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MentorCardProps } from '@/types/mentorType';
+import Image from 'next/image';
 
 // Mock mentor data - using the same structure as MentorsShowcase
 const mentors = [
@@ -109,12 +111,14 @@ const popularTags = [
   "Mobile Development"
 ];
 
-const MentorCard = ({ mentor }: { mentor: any }) => {
+const MentorCard = ({ mentor }: MentorCardProps) => {
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       <CardContent className="p-6">
         <div className="flex items-start gap-4">
-          <img 
+          <Image
+            width={64}
+            height={64}
             src={mentor.imageUrl}
             alt={mentor.name}
             className="w-16 h-16 rounded-full object-cover border-2 border-primary"

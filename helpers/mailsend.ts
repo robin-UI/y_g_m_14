@@ -25,7 +25,11 @@ const mailSender = async (email: string, title: string, body: string) => {
     console.log("Email info: ", info);
     return info;
   } catch (error) {
-    console.log(error.message, "nodemailer error");
+    if (error instanceof Error) {
+      console.log(error.message, "nodemailer error");
+    } else {
+      console.log("Unknown error", error, "nodemailer error");
+    }
   }
 };
 

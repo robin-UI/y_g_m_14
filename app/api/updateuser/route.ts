@@ -60,10 +60,10 @@ export async function PUT(request: Request) {
             }
         }, { status: 200 });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Update user error:', error);
         return NextResponse.json(
-            { error: error.message || "Error updating user" },
+            { error: error instanceof Error ? error.message : "Error updating user" },
             { status: 500 }
         );
     }

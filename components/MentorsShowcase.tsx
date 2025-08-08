@@ -1,6 +1,7 @@
 "use client";
 import { Button } from '@/components/ui/button';
 import { Star, ArrowRight } from 'lucide-react';
+import Image from 'next/image';
 import { useState } from 'react';
 
 // Define a type for mentor data
@@ -73,9 +74,16 @@ const MentorCard = ({ mentor }: { mentor: Mentor }) => {
     <div className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow border border-grey-100">
       <div className="p-6">
         <div className="flex items-start gap-4">
-          <img 
+          {/* <img 
             src={mentor.imageUrl}
             alt={mentor.name}
+            className="w-16 h-16 rounded-full object-cover border-2 border-primary"
+          /> */}
+          <Image
+            src={mentor.imageUrl}
+            alt={mentor.name}
+            width={64}
+            height={64}
             className="w-16 h-16 rounded-full object-cover border-2 border-primary"
           />
           <div>

@@ -14,6 +14,40 @@ type PricingTier = {
   isPopular?: boolean;
 };
 
+interface RazorpayPaymentResponse {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+}
+
+declare global {
+  interface RazorpayOptions {
+    key: string;
+    amount: number;
+    currency: string;
+    name: string;
+    description: string;
+    order_id: string;
+    handler: (response: RazorpayPaymentResponse) => void;
+    prefill: {
+      name: string;
+      email: string;
+    };
+    theme: {
+      color: string;
+    };
+  }
+
+  interface RazorpayInstance {
+    open(): void;
+    on(event: string, callback: (response: RazorpayPaymentResponse) => void): void;
+  }
+
+  interface Window {
+    Razorpay: new (options: RazorpayOptions) => RazorpayInstance;
+  }
+}
+
 const pricingTiers: PricingTier[] = [
   {
     name: "Starter",
@@ -101,7 +135,7 @@ const PricingSection = () => {
         name: "name",
         description: "description",
         order_id: orderId,
-        handler: async function (response: any) {
+        handler: async function (response: RazorpayPaymentResponse) {
           const data = {
             orderCreationId: orderId,
             razorpayPaymentId: response.razorpay_payment_id,
@@ -129,8 +163,9 @@ const PricingSection = () => {
         },
       };
       const paymentObject = new window.Razorpay(options);
-      paymentObject.on("payment.failed", function (response: any) {
-        alert(response.error.description);
+      paymentObject.on("payment.failed", function (response: RazorpayPaymentResponse) {
+        // alert(response.error.description);
+        console.log("Payment failed:", response);
       });
       paymentObject.open();
     } catch (error) {

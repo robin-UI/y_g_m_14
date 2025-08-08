@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import MeetingModel from "@/model/Meeting";
-import UserModel from "@/model/User";
+// import UserModel from "@/model/User";
 import { meetingFormSchema } from "@/types/meetingType";
 import mongoose from "mongoose";
 
@@ -68,27 +68,27 @@ export async function PUT(request: Request) {
             duration: updateData.duration,
             notes: updateData.notes,
             status: updateData.status,
-            attendeeId: updateData.attendeeId
+            // attendeeId: updateData.attendeeId
         };
 
         // Remove undefined values
-        Object.keys(allowedUpdates).forEach(key => 
-            allowedUpdates[key] === undefined && delete allowedUpdates[key]
-        );
+        // Object.keys(allowedUpdates).forEach(key => 
+        //     allowedUpdates[key] === undefined && delete allowedUpdates[key]
+        // );
 
         // If attendeeId is being updated, verify the new attendee exists
-        if (allowedUpdates.attendeeId) {
-            const attendeeExists = await UserModel.findById(allowedUpdates.attendeeId);
-            if (!attendeeExists) {
-                return NextResponse.json(
-                    { error: "Invalid attendee ID" },
-                    { status: 400 }
-                );
-            }
-            // Update the attendee field name to match the schema
-            allowedUpdates.attendee = allowedUpdates.attendeeId;
-            delete allowedUpdates.attendeeId;
-        }
+        // if (allowedUpdates.attendeeId) {
+        //     const attendeeExists = await UserModel.findById(allowedUpdates.attendeeId);
+        //     if (!attendeeExists) {
+        //         return NextResponse.json(
+        //             { error: "Invalid attendee ID" },
+        //             { status: 400 }
+        //         );
+        //     }
+        //     // Update the attendee field name to match the schema
+        //     allowedUpdates.attendee = allowedUpdates.attendeeId;
+        //     delete allowedUpdates.attendeeId;
+        // }
 
         // Update the meeting
         const updatedMeeting = await MeetingModel.findByIdAndUpdate(
