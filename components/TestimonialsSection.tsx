@@ -121,7 +121,7 @@ const TestimonialsSection = () => {
             </div>
           </div>
           
-          <div className="flex justify-center mt-8 gap-4">
+          <div className="flex justify-center items-center mt-8 gap-4">
             <Button 
               variant="outline" 
               size="icon" 

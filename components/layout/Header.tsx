@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, LogOut, UserRound, ChevronDown } from "lucide-react";
+import { Menu, X, LogOut, UserRound, ChevronDown, Video, VideoIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -108,6 +108,10 @@ const Header = () => {
                   <DropdownMenuItem onClick={() => router.push("/profile")}>
                     <UserRound className="mr-2 h-4 w-4" />
                     <span>My Profile</span>
+                  </DropdownMenuItem>
+                   <DropdownMenuItem onClick={() => router.push("/meetings")}>
+                    <VideoIcon className="mr-2 h-4 w-4" />
+                    <span>My Meetings</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>

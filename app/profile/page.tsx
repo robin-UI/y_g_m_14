@@ -39,7 +39,7 @@ function Profile() {
   
     // Mock user data - In a real app, this would come from your backend
     const defaultValues: Partial<ProfileFormValues> = {
-      fullName: "Alex Johnson",
+      fullName: "Robin Biju",
       bio: "",
       education: "",
       jobTitle: "",
