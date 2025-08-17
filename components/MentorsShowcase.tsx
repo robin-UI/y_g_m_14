@@ -109,7 +109,7 @@ const MentorCard = ({ mentor }: { mentor: Mentor }) => {
         
         <div className="mt-6 flex items-center justify-between">
           <div>
-            <span className="text-primary font-semibold">${mentor.hourlyRate}</span>
+            <span className="text-primary font-semibold">₹{mentor.hourlyRate}</span>
             <span className="text-grey-600 text-sm"> / hour</span>
           </div>
           <Button size="sm" className="bg-primary hover:bg-primary-dark text-white">

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
+// import UserModel from "@/model/User"; // ✅ Uncomment this import
 import MeetingModel from "@/model/Meeting";
 import mongoose from "mongoose";
 
@@ -22,15 +23,14 @@ export async function GET(request: Request) {
         // Get status filter if provided
         const status = searchParams.get('status');
         const validStatuses = ['pending', 'confirmed', 'cancelled'];
-        
+
         // Build query conditions
         const conditions: {
-            $or: { createdBy: string; }[] | { attendee: string; }[];
+            $or: { createdBy: string; }[];
             status?: string;
         } = {
             $or: [
                 { createdBy: userId },
-                // { attendee: userId }
             ]
         };
 
@@ -41,9 +41,7 @@ export async function GET(request: Request) {
 
         // Get meetings where user is either creator or attendee
         const meetings = await MeetingModel.find(conditions)
-            .populate('createdBy', 'name email')
-            .populate('attendee', 'name email')
-            .sort({ date: 1, time: 1 }) // Sort by date and time ascending
+            .sort({ date: 1, time: 1 })
             .exec();
 
         // Transform meetings for response
@@ -55,35 +53,14 @@ export async function GET(request: Request) {
             duration: meeting.duration,
             notes: meeting.notes,
             status: meeting.status,
-            // createdBy: {
-            //     _id: meeting.createdBy._id,
-            //     name: meeting.createdBy.name,
-            //     email: meeting.createdBy.email
-            // },
-            // attendee: {
-            //     _id: meeting.attendee._id,
-            //     name: meeting.attendee.name,
-            //     email: meeting.attendee.email
-            // },
-            // isCreator: meeting.createdBy._id.toString() === userId,
+            createdBy: meeting.createdBy, // Include populated user data
             createdAt: meeting.createdAt,
             updatedAt: meeting.updatedAt
         }));
 
-        // Group meetings by date
-        const groupedMeetings = transformedMeetings
-        // .reduce((groups, meeting) => {
-        //     const date = new Date(meeting.date).toISOString().split('T')[0];
-        //     if (!groups[date]) {
-        //         groups[date] = [];
-        //     }
-        //     groups[date].push(meeting);
-        //     return groups;
-        // }, {});
-
         return NextResponse.json({
             message: "Meetings retrieved successfully",
-            meetings: groupedMeetings
+            meetings: transformedMeetings
         }, { status: 200 });
 
     } catch (error) {

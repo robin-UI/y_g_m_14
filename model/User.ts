@@ -1,35 +1,18 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export interface Message extends Document {
-  content: string;
-  createdAt: Date;
-}
-
-const MessageSchema: Schema<Message> = new mongoose.Schema({
-  content: {
-    type: String,
-    required: true,
-  },
-  createdAt: {
-    type: Date,
-    required: true,
-    default: Date.now,
-  },
-});
-
 export interface User extends Document {
   name: string;
   email: string;
+  // mobileNmber: string;
   password: string;
   verifyCode: string;
   verifyCodeExpiry: Date; 
   isVerified: boolean;
   isAcceptingMessages: boolean;
-  messages: Message[];
 }
 
 // Updated User schema
-const UserSchema: Schema<User> = new mongoose.Schema({
+const userSchema: Schema<User> = new mongoose.Schema({
   name: {
     type: String,
     // required: [true, 'Username is required'],
@@ -58,11 +41,11 @@ const UserSchema: Schema<User> = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
-  messages: [MessageSchema],
 });
 
-const UserModel =
-  (mongoose.models.User as mongoose.Model<User>) ||
-  mongoose.model<User>('User', UserSchema);
+// const UserModel =
+//   (mongoose.models.User as mongoose.Model<User>) ||
+//   mongoose.model<User>('User', userSchema);
 
-export default UserModel;
+// export default UserModel;
+export default mongoose.models.User || mongoose.model("User", userSchema);

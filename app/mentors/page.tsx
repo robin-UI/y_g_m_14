@@ -151,8 +151,8 @@ const MentorCard = ({ mentor }: MentorCardProps) => {
         <div className="mt-6 flex items-center justify-between">
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center">
-              <DollarSign className="h-4 w-4 mr-1" />
-              <span className="font-semibold text-primary">${mentor.hourlyRate}/hr</span>
+              {/* <DollarSign className="h-4 w-4 mr-1" /> */}
+              <span className="font-semibold text-primary">₹{mentor.hourlyRate}/hr</span>
             </div>
             <div className="flex items-center">
               <Clock className="h-4 w-4 mr-1" />
@@ -217,10 +217,10 @@ const FindMentors = () => {
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-8">
+      <div className=" container mx-auto px-4 py-8">
         <div className="flex gap-8">
           {/* Filters Sidebar */}
-          <div className="w-80 space-y-6">
+          <div className="hidden md:block w-80 space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Filters</h3>
               <Button
@@ -348,7 +348,7 @@ const FindMentors = () => {
               <h2 className="text-2xl font-bold">Available Mentors</h2>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">{mentors.length} mentors found</span>
-                <Select defaultValue="rating">
+                {/* <Select defaultValue="rating">
                   <SelectTrigger className="w-40">
                     <SelectValue />
                   </SelectTrigger>
@@ -358,7 +358,7 @@ const FindMentors = () => {
                     <SelectItem value="price-high">Price: High to Low</SelectItem>
                     <SelectItem value="experience">Most Experienced</SelectItem>
                   </SelectContent>
-                </Select>
+                </Select> */}
               </div>
             </div>
 

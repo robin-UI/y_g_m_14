@@ -1,10 +1,13 @@
-import mailSender from "@/helpers/mailsend";
 import dbConnect from "@/lib/dbConnect";
+import mailSender from "@/helpers/mailsend";
 import UserModel from "@/model/User";
 
 export async function POST(request: Request) {
   await dbConnect();
   const { email } = await request.json();
+
+  console.log(email,);
+  
 
   const existingVerifiedUserByUsername = await UserModel.findOne({
     email,
@@ -15,7 +18,8 @@ export async function POST(request: Request) {
     return new Response(JSON.stringify({ error: "User already exists" }), {
       status: 400,
     });
-  } else {
+  } 
+  else {
     // Validate the email address
     if (!email || !/\S+@\S+\.\S+/.test(email)) {
       return new Response(JSON.stringify({ error: "Invalid email address" }), {

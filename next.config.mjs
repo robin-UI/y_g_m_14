@@ -2,6 +2,7 @@
 const nextConfig = {
   images: {
     domains: ["randomuser.me", "images.unsplash.com"],
+    // images: {
     remotePatterns: [
       {
         protocol: "https",
@@ -13,6 +14,7 @@ const nextConfig = {
       },
     ],
   },
+  // },
 };
 
 export default nextConfig;

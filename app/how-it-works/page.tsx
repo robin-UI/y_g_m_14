@@ -239,7 +239,7 @@ const HowItWorks = () => {
                   </p>
                 </div>
               </div>
-              <div className="flex-1 order-1 md:order-2">
+              <div className="hidden md:block flex-1 order-1 md:order-2">
                 <div className="bg-primary/10 p-8 rounded-2xl flex items-center justify-center h-64">
                   <Users className="w-24 h-24 text-primary" />
                 </div>

@@ -4,6 +4,7 @@ import "./globals.css";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import ChatIcon from "@/components/chat/ChatIcon";
+import QueryProvider from "@/components/QueryProvider";
 
 // const geistSans = localFont({
 //   src: "./fonts/GeistVF.woff",
@@ -29,10 +30,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="flex flex-col min-h-screen bg-grey-100/30">
+      <QueryProvider>
         <Header />
         {children}
         <ChatIcon />
         <Footer />
+      </QueryProvider>
       </body>
     </html>
   );

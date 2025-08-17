@@ -18,16 +18,48 @@ import MeetingForm from "@/components/meetings/MeetingForm";
 import MeetingList from "@/components/meetings/MeetingList";
 import { Meeting } from "@/components/meetings/MeetingCard";
 import { MeetingType } from "@/types/meetingType";
+import { useQuery } from "@tanstack/react-query";
 // import router from 'next/router';
+
+type Meetings = {
+  _id: string;
+  subject: string;
+  date: Date;
+  time: string;
+  duration: number; // in minutes
+  notes: string;
+  status: "upcoming" | "completed" | "cancelled";
+  createdBy: string; // user ID of the creator
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+};
+
+async function fetchMeetingList(): Promise<Meetings[]> {
+  // Simulate fetching meetings from an API or database
+  const response = await fetch("/api/listmeetings?userId=682f085814cddb288b5ce447");
+  if (!response.ok) {
+    throw new Error("Failed to fetch meetings");
+  }
+  const data = await response.json();
+  return data.map((meeting: MeetingType) => ({
+    ...meeting,
+    date: new Date(meeting.date),
+  }));
+}
 
 const Meetings = () => {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
 
   // Demo purposes only - in a real app, we'd check if user is authenticated
   const isAuthenticated = true;
+
+  const { isLoading} = useQuery({
+    queryKey: ["meetings"],
+    queryFn: fetchMeetingList,
+  });
 
   useEffect(() => {
     // Redirect if not authenticated
@@ -38,7 +70,7 @@ const Meetings = () => {
 
     // Simulate loading meetings from API/local storage
     const loadMeetings = () => {
-      setIsLoading(true);
+      // setIsLoading(true);
       try {
         const storedMeetings = localStorage.getItem("meetings");
         const parsedMeetings = storedMeetings
@@ -53,7 +85,7 @@ const Meetings = () => {
         console.error("Error loading meetings", error);
         setMeetings(generateSampleMeetings());
       } finally {
-        setIsLoading(false);
+        // setIsLoading(false);
       }
     };
 
