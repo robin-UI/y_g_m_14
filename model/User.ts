@@ -1,9 +1,10 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface User extends Document {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  // mobileNmber: string;
+  mobileNmber: string;
   password: string;
   verifyCode: string;
   verifyCodeExpiry: Date; 
@@ -13,11 +14,13 @@ export interface User extends Document {
 
 // Updated User schema
 const userSchema: Schema<User> = new mongoose.Schema({
-  name: {
+  firstName: {
     type: String,
-    // required: [true, 'Username is required'],
     trim: true,
-    // unique: true,    
+  },
+  lastName: {
+    type: String,
+    trim: true,
   },
   email: {
     type: String,
@@ -25,9 +28,19 @@ const userSchema: Schema<User> = new mongoose.Schema({
     unique: true,
     match: [/.+\@.+\..+/, 'Please use a valid email address'],
   },
+  mobileNmber: {
+    type: String,
+    trim: true,
+    required: [true, 'Mobile Number is required'],
+  },
   verifyCode: {
     type: String,
     // required: [true, 'Verify Code is required'],
+  },
+  password: {
+    type: String,
+    required: [true, 'Password is required'],
+    minlength: [6, 'Password must be at least 6 characters long'],
   },
   verifyCodeExpiry: {
     type: Date,

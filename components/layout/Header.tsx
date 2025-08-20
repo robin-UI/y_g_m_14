@@ -131,7 +131,7 @@ const Header = () => {
                 </Button>
                 <Button
                   className="bg-gradient-to-r from-primary to-primary-dark hover:shadow-lg hover:shadow-primary/30 transition-all duration-300 text-white"
-                  onClick={() => router.push("/login")}
+                  onClick={() => router.push("/signup")}
                 >
                   Get Started
                 </Button>

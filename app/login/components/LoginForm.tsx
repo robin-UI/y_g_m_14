@@ -1,24 +1,68 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
-import React from "react";
+import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import axios, { AxiosPromise } from "axios";
+import { useMutation } from "@tanstack/react-query";
+
+interface UserData {
+  emailOrPhone: string;
+  password: string;
+}
+
+async function postData(data: UserData): Promise<AxiosPromise> {
+  return await axios.post("/api/login", data, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
 
 function LoginForm() {
+  const [userData, setUserData] = useState({
+    emailOrPhone: "",
+    password: "",
+  })
+
+  const logMutate = useMutation({
+    mutationFn: postData,
+    onSuccess: (data) => {
+      console.log("User data submitted successfully:", data);
+      // setIsLoged(!true); // Simulate successful login
+    },
+    onError: (error) => {
+      console.error("Error submitting user data:", error);
+      // setError("Failed to submit user data");
+    },
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUserData({
+      ...userData,
+      [e.target.name]: e.target.value,
+    });
+  };
+  
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    logMutate.mutate(userData);
+  };
+
   return (
     <div className={cn("flex flex-col gap-6")}>
       <Card className="w-full max-w-md mx-auto overflow-hidden border-0 shadow-xl bg-white/80 backdrop-blur-sm">
         <CardContent >
-          <form className="py-6">
+          <form className="py-6" onSubmit={handleSubmit}>
             <div className="flex flex-col gap-6">
               <div className="flex flex-col items-center text-center">
                 <h1 className="text-2xl font-bold">Welcome back</h1>
                 <p className="text-muted-foreground text-balance">
-                  Login to your Acme Inc account
+                  Login to your account
                 </p>
               </div>
               <div className="grid gap-3">
@@ -26,6 +70,9 @@ function LoginForm() {
                 <Input
                   id="email"
                   type="text"
+                  name="emailOrPhone"
+                  value={userData.emailOrPhone}
+                  onChange={handleChange}
                   // placeholder="ms@example.com / +91 12345 67890"
                   required
                 />
@@ -40,7 +87,7 @@ function LoginForm() {
                     Forgot your password?
                   </a>
                 </div>
-                <Input id="password" type="password" required />
+                <Input id="password" type="password" name="password" value={userData.password} onChange={handleChange} required />
               </div>
               <Button type="submit" className="w-full">
                 Login

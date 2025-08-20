@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   Card,
@@ -19,12 +19,49 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
-// import { set } from "mongoose";
+// import { usePhoneAuth } from "@/hooks/usePhoneAuth";
+import axios, { AxiosPromise } from "axios";
+import { useMutation } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import Link from "next/link";
+
+interface UserData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  password: string;
+  confirmPassword: string;
+}
+
+interface VerifyOTPResponse {
+  email: string;
+  otp: string;
+}
+
+async function postData(data: UserData): Promise<AxiosPromise> {
+  return await axios.post("/api/signin", data, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
+
+async function verifyOTPPost(data: VerifyOTPResponse): Promise<AxiosPromise> {
+  return await axios.post("/api/otpverification", data, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+}
 
 function SignupForm() {
   const [isLoged, setIsLoged] = useState(false);
   const [otpValue, setOtpValue] = useState("");
-//   const [phoneNumber, setPhoneNumber] = useState("+91 12345 67890");
+  const [togglePassword, setTogglePassword] = useState(false);
+  // const [phoneNumber, setPhoneNumber] = useState("+91 12345 67890");
+  const { toast } = useToast();
 
   const [userData, setUserData] = useState({
     firstName: "",
@@ -35,14 +72,124 @@ function SignupForm() {
     confirmPassword: "",
   });
 
-  const handleOtpSubmit = () => {};
+  // const { loading, error, sendOTP, verifyOTP, resendOTP, setError } =
+  //   usePhoneAuth();
+
+  // form validation and submission
+  const validateForm = () => {
+    if (
+      !userData.firstName ||
+      !userData.lastName ||
+      !userData.email ||
+      !userData.phone ||
+      !userData.password ||
+      !userData.confirmPassword
+    ) {
+      return false;
+    }
+    if (userData.password !== userData.confirmPassword) {
+      return false;
+    }
+    // Add more validation as needed
+    return true;
+  };
+
+  const userMutate = useMutation({
+    mutationFn: postData,
+    onSuccess: (data) => {
+      console.log("User data submitted successfully:", data);
+      setIsLoged(!true); // Simulate successful login
+    },
+    onError: (error) => {
+      console.error("Error submitting user data:", error);
+    },
+  });
+
+  const verifyOTPMutate = useMutation({
+    mutationFn: verifyOTPPost,
+    onSuccess: (data) => {
+      console.log("OTP verified successfully:", data);
+      toast({
+        title: "OTP Verified",
+        description: "Your phone number has been verified.",
+        variant: "destructive",
+      });
+    },
+    onError: (error) => {
+      console.error("Error verifying OTP:", error);
+      toast({
+        title: "OTP Verification Failed",
+        description: "Please check your OTP and try again.",
+        variant: "destructive",
+      });
+    },
+  })
+
+  // Handle OTP verification
+  const handleVerifyOTP = async () => {
+
+    if (!otpValue || otpValue.length !== 6) {
+      toast({
+        title: "Invalid OTP",
+        description: "Please enter a valid 6-digit OTP.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const otpData: VerifyOTPResponse = {
+      email: userData.email,
+      otp: otpValue,
+    };
+
+    verifyOTPMutate.mutate(otpData);
+
+    // Firebase OTP verification 🔥🔥🔥
+    // const result = await verifyOTP(otpValue);
+    // if (result.success) {
+    //   console.log("OTP verified successfully Robin");
+    //   toast({
+    //     title: "OTP Submited Successfully",
+    //     description: `Your phone number ${userData.phone} has been verified.`,
+    //     // variant: "success",
+    //     variant: "destructive"
+    //   });
+    //   userMutate.mutate(userData);
+    // }
+  };
+
+  //Firebase OTP sending 🔥🔥🔥
+  // const handleOtpSubmit = async () => {
+  //   setError(null);
+  //   const result = await sendOTP(userData.phone);
+  //   if (result.success) {
+  //     toast({
+  //       title: "OTP Sent",
+  //       description: `A verification code has been sent to ${userData.phone}.`,
+  //       // variant: "success",
+  //     });
+  //   }
+  // };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Here you would typically handle the form submission, e.g., send data to an API
+    if (!validateForm()) {
+      alert("Please fill in all fields correctly.");
+      return;
+    }
+    console.log("User Data Submitted:", userData);
+    setIsLoged(true); // Simulate successful login
+    // handleOtpSubmit();
+    userMutate.mutate(userData);
+  };
 
   return (
     <div className={cn("flex flex-col gap-6")}>
       <Card className="w-full max-w-md mx-auto overflow-hidden border-0 shadow-xl bg-white/80 backdrop-blur-sm">
         {!isLoged ? (
           <CardContent>
-            <form className="py-6">
+            <form className="py-6" onSubmit={handleSubmit}>
               <div className="flex flex-col gap-6">
                 <div className="flex flex-col items-center text-center">
                   <h1 className="text-2xl font-bold">Hello, new one </h1>
@@ -99,7 +246,9 @@ function SignupForm() {
                     type="phone"
                     placeholder="+91 12345 67890"
                     value={userData.phone}
-                    onChange={ e => setUserData({ ...userData, phone: e.target.value })}
+                    onChange={(e) =>
+                      setUserData({ ...userData, phone: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -107,13 +256,42 @@ function SignupForm() {
                   <div className="flex items-center">
                     <Label htmlFor="password">Your Password</Label>
                   </div>
-                  <Input id="password" type="password" value={userData.password} onChange={e => setUserData({ ...userData, password: e.target.value})} required />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={togglePassword ? "text" : "password"}
+                      value={userData.password}
+                      onChange={(e) =>
+                        setUserData({ ...userData, password: e.target.value })
+                      }
+                      required
+                    />
+                    <Button
+                      variant="ghost"
+                      className="absolute right-0 top-1/2 -translate-y-1/2"
+                      onClick={() => setTogglePassword(!togglePassword)}
+                    >
+                      {togglePassword ? "Hide" : "Show"}
+                    </Button>
+                  </div>
+                  {/* <Input id="password" type="password" value={userData.password} onChange={e => setUserData({ ...userData, password: e.target.value})} required /> */}
                 </div>
                 <div className="grid gap-3">
                   <div className="flex items-center">
-                    <Label htmlFor="password">Conform Password</Label>
+                    <Label htmlFor="cnfpassword">Conform Password</Label>
                   </div>
-                  <Input id="password" type="password" required />
+                  <Input
+                    id="cnfpassword"
+                    type={togglePassword ? "text" : "password"}
+                    value={userData.confirmPassword}
+                    onChange={(e) =>
+                      setUserData({
+                        ...userData,
+                        confirmPassword: e.target.value,
+                      })
+                    }
+                    required
+                  />
                 </div>
                 <Button type="submit" className="w-full">
                   Sign Up
@@ -154,9 +332,9 @@ function SignupForm() {
                 </div>
                 <div className="text-center text-sm">
                   Did you have an account?{" "}
-                  <a href="#" className="underline underline-offset-4">
+                  <Link href="/login" className="underline underline-offset-4">
                     Log in
-                  </a>
+                  </Link>
                 </div>
               </div>
             </form>
@@ -197,7 +375,7 @@ function SignupForm() {
             <CardFooter className="flex flex-col space-y-2">
               <Button
                 className="w-full bg-gradient-to-r from-primary to-primary-dark"
-                onClick={handleOtpSubmit}
+                onClick={handleVerifyOTP}
               >
                 Verify & Continue
               </Button>
@@ -212,6 +390,7 @@ function SignupForm() {
           </CardContent>
         )}
       </Card>
+      <div id="recaptcha-container" className=""></div>
     </div>
   );
 }
