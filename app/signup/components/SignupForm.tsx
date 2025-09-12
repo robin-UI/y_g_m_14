@@ -40,7 +40,7 @@ interface VerifyOTPResponse {
 }
 
 async function postData(data: UserData): Promise<AxiosPromise> {
-  return await axios.post("/api/signin", data, {
+  return await axios.post("/api/signup", data, {
     headers: {
       "Content-Type": "application/json",
     },

@@ -7,9 +7,11 @@ export interface User extends Document {
   mobileNmber: string;
   password: string;
   verifyCode: string;
-  verifyCodeExpiry: Date; 
+  verifyCodeExpiry: Date;
   isVerified: boolean;
   isAcceptingMessages: boolean;
+  isProfileViewable: boolean;
+  isMentor: boolean;
 }
 
 // Updated User schema
@@ -54,6 +56,16 @@ const userSchema: Schema<User> = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  isProfileViewable: {
+    type: Boolean,
+    default: true,
+  },
+  isMentor: {
+    type: Boolean,
+    default: false,
+  },
+}, {
+  timestamps: true
 });
 
 // const UserModel =
