@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface User extends Document {
   firstName: string;
   lastName: string;
+  username: string;
   email: string;
   mobileNmber: string;
   password: string;
@@ -11,7 +12,7 @@ export interface User extends Document {
   isVerified: boolean;
   isAcceptingMessages: boolean;
   isProfileViewable: boolean;
-  isMentor: boolean;
+  role: 'STUDENT' | 'MENTOR';
 }
 
 // Updated User schema
@@ -23,6 +24,14 @@ const userSchema: Schema<User> = new mongoose.Schema({
   lastName: {
     type: String,
     trim: true,
+  },
+  username: {
+    type: String,
+    trim: true,
+    required: [true, 'Username is required'],
+    unique: true,
+    minlength: [3, 'Username must be at least 3 characters long'],
+    maxlength: [30, 'Username cannot exceed 30 characters'],
   },
   email: {
     type: String,
@@ -37,7 +46,7 @@ const userSchema: Schema<User> = new mongoose.Schema({
   },
   verifyCode: {
     type: String,
-    // required: [true, 'Verify Code is required'],
+    required: [true, 'Verify Code is required'],
   },
   password: {
     type: String,
@@ -46,7 +55,13 @@ const userSchema: Schema<User> = new mongoose.Schema({
   },
   verifyCodeExpiry: {
     type: Date,
-    // required: [true, 'Verify Code Expiry is required'],
+    required: [true, 'Verify Code Expiry is required'],
+  },
+  role: {
+    type: String,
+    enum: ['STUDENT', 'MENTOR'],
+    required: [true, 'Role is required'],
+    default: 'STUDENT',
   },
   isVerified: {
     type: Boolean,
@@ -59,10 +74,6 @@ const userSchema: Schema<User> = new mongoose.Schema({
   isProfileViewable: {
     type: Boolean,
     default: true,
-  },
-  isMentor: {
-    type: Boolean,
-    default: false,
   },
 }, {
   timestamps: true

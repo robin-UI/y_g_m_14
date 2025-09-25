@@ -3,47 +3,60 @@ import UserModel from "@/model/User";
 
 export async function POST(request: Request) {
   await dbConnect();
-  const { email, otp } = await request.json();
+  const { email, code } = await request.json();
+  const decodedEmail = decodeURIComponent(email);
+  // console.log(decodedEmail, code);
+  
+  const user = await UserModel.findOne({ email: decodedEmail });
 
-  const existingVerifiedUserByUsername = await UserModel.findOne({
-    email,
-    isVerified: true,
-  });
+  if (!user) {
+    return Response.json(
+      { success: false, message: 'User not found' },
+      { status: 404 }
+    );
+  }
 
-  if (existingVerifiedUserByUsername) {
-    return new Response(JSON.stringify({ error: "User already exists" }), {
+  if (user.isVerified) {
+    return  Response.json({ message: "User already exists" }, {
       status: 400,
     });
   } else {
     // Validate the email address
-    if (!email || !/\S+@\S+\.\S+/.test(email)) {
-      return new Response(JSON.stringify({ error: "Invalid email address" }), {
+    if (!decodedEmail || !/\S+@\S+\.\S+/.test(decodedEmail)) {
+      return Response.json({ message: "Invalid email address" }, {
         status: 400,
       });
     }
 
-    // Check if the OTP is valid
-    const user = await UserModel.findOne({
-      email,
-      verifyCode: otp,
-      //   verifyCodeExpiry: { $gt: new Date() }, // Check if the OTP is not expired
-    });
+    // Check if the code is correct and not expired
+    const isCodeValid = user.verifyCode === code;
+    const isCodeNotExpired = new Date(user.verifyCodeExpiry) > new Date();
 
-    if (!user) {
-      return new Response(JSON.stringify({ error: "Invalid or expired OTP" }), {
-        status: 400,
-      });
+    if (isCodeValid && isCodeNotExpired) {
+      // Update the user's verification status
+      user.isVerified = true;
+      await user.save();
+
+      return Response.json(
+        { success: true, message: 'Account verified successfully' },
+        { status: 200 }
+      );
+    } else if (!isCodeNotExpired) {
+      // Code has expired
+      return Response.json(
+        {
+          success: false,
+          message:
+            'Verification code has expired. Please sign up again to get a new code.',
+        },
+        { status: 400 }
+      );
+    } else {
+      // Code is incorrect
+      return Response.json(
+        { success: false, message: 'Incorrect verification code' },
+        { status: 400 }
+      );
     }
-
-    // Mark the user as verified
-    user.isVerified = true;
-    await user.save();
-
-    return new Response(
-      JSON.stringify({ message: "User verified successfully" }),
-      {
-        status: 200,
-      }
-    );
   }
 }

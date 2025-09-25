@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm i:*)"
+      "Bash(npm i:*)",
+      "Bash(npm run build:*)",
+      "Bash(openssl rand:*)",
+      "Bash(npm ls:*)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": [],
     "ask": []

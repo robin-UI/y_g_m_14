@@ -1,10 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, LogOut, UserRound, ChevronDown, VideoIcon } from "lucide-react";
+import {
+  Menu,
+  X,
+  LogOut,
+  UserRound,
+  ChevronDown,
+  VideoIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,32 +21,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { motion } from "motion/react";
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState({name: ""});
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { data: session, status } = useSession();
   const router = useRouter();
 
-  useEffect(() => {
-    // Check if user is logged in (in a real app, you would use a proper auth system)
-    const isLoggedIn = !!localStorage.getItem("currentUser");
-    const currentUser = isLoggedIn
-      ? JSON.parse(localStorage.getItem("currentUser") || "{}")
-      : null;
-      setIsLoggedIn(isLoggedIn);
-    if (isLoggedIn) setCurrentUser(currentUser);
-
-  }, []);
+  const isLoggedIn = status === "authenticated";
+  const currentUser = session?.user;
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("currentUser");
-    router.push("/");
-    window.location.reload(); // Force refresh to update auth state
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: "/" });
   };
 
   return (
@@ -48,9 +46,9 @@ const Header = () => {
           <div className="flex items-center">
             <Link
               href="/"
-              className="text-2xl font-bold text-primary flex items-center"
+              className={`text-2xl font-bold ${currentUser?.role === "student" ? "text-secondary" : " text-primary"} flex items-center`}
             >
-              <span className="bg-gradient-to-r from-primary to-primary-dark text-white rounded-md p-1 mr-2">
+              <span className={`bg-gradient-to-r ${currentUser?.role === "student" ? "from-secondary/50 to-secondary-dark": "from-primary to-primary-dark"} text-white rounded-md p-1 mr-2`}>
                 Y
               </span>
               YouGotaMentor
@@ -93,14 +91,14 @@ const Header = () => {
                   <Avatar className="h-8 w-8 border">
                     <AvatarImage
                       src="/placeholder.svg"
-                      alt={currentUser?.name || "User"}
+                      alt={currentUser?.username || currentUser?.email || "User"}
                     />
-                    <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                      {currentUser?.name?.charAt(0) || "U"}
+                    <AvatarFallback className={` ${currentUser?.role === "student" ? "bg-secondary/10 text-secondary" : "bg-primary/10 text-primary"} font-medium`}>
+                      {(currentUser?.username || currentUser?.email)?.charAt(0) || "U"}
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-grey-800 font-medium">
-                    {currentUser?.name || "User"}
+                    {currentUser?.username || currentUser?.email || "User"}
                   </span>
                   <ChevronDown size={16} className="text-grey-500" />
                 </DropdownMenuTrigger>
@@ -109,7 +107,7 @@ const Header = () => {
                     <UserRound className="mr-2 h-4 w-4" />
                     <span>My Profile</span>
                   </DropdownMenuItem>
-                   <DropdownMenuItem onClick={() => router.push("/meetings")}>
+                  <DropdownMenuItem onClick={() => router.push("/meetings")}>
                     <VideoIcon className="mr-2 h-4 w-4" />
                     <span>My Meetings</span>
                   </DropdownMenuItem>
@@ -122,19 +120,30 @@ const Header = () => {
               </DropdownMenu>
             ) : (
               <>
-                <Button
-                  variant="outline"
-                  className="border-primary text-primary hover:bg-primary-light/10"
+                <motion.div
+                  whileHover={{ scale: 1.09 }}
+                  whileTap={{ scale: 0.95 }}
+                  // onHoverStart={() => console.log("hover started!")}
                   onClick={() => router.push("/login")}
                 >
-                  Log In
-                </Button>
-                <Button
-                  className="bg-gradient-to-r from-primary to-primary-dark hover:shadow-lg hover:shadow-primary/30 transition-all duration-300 text-white"
-                  onClick={() => router.push("/signup")}
+                  <Button
+                    variant="outline"
+                    className="border-primary text-primary hover:bg-primary-light/10"
+                    // onClick={() => router.push("/login")}
+                  >
+                    Log In
+                  </Button>
+                </motion.div>
+                <motion.div
+                  whileHover={{ scale: 1.09 }}
+                  whileTap={{ scale: 0.95 }}
+                  // onHoverStart={() => console.log("hover started!")}
+                  onClick={() => router.push("/sign-up")}
                 >
-                  Get Started
-                </Button>
+                  <Button className="bg-gradient-to-r from-primary to-primary-dark hover:shadow-lg hover:shadow-primary/30 transition-all duration-300 text-white">
+                    Get Started
+                  </Button>
+                </motion.div>
               </>
             )}
           </div>
@@ -190,14 +199,14 @@ const Header = () => {
                       <Avatar className="h-8 w-8 border">
                         <AvatarImage
                           src="/placeholder.svg"
-                          alt={currentUser?.name || "User"}
+                          alt={currentUser?.username || currentUser?.email || "User"}
                         />
                         <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                          {currentUser?.name?.charAt(0) || "U"}
+                          {(currentUser?.username || currentUser?.email)?.charAt(0) || "U"}
                         </AvatarFallback>
                       </Avatar>
                       <span className="font-medium">
-                        {currentUser?.name || "User"}
+                        {currentUser?.username || currentUser?.email || "User"}
                       </span>
                     </div>
                     <div className="mt-2 space-y-1">
