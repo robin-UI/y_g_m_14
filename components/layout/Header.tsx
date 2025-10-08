@@ -216,6 +216,17 @@ const Header = () => {
                         variant="ghost"
                         className="w-full justify-start px-4 py-2 text-grey-700"
                         onClick={() => {
+                          router.push("/meetings");
+                          setMobileMenuOpen(false);
+                        }}
+                      >
+                        <VideoIcon className="mr-2 h-4 w-4" />
+                        My Meetings
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start px-4 py-2 text-grey-700"
+                        onClick={() => {
                           router.push("/profile");
                           setMobileMenuOpen(false);
                         }}

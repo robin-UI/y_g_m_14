@@ -15,7 +15,9 @@ function SocketProvider({ children }: { children: React.ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
-    const connection = io("localhost:3001");
+    console.log(process.env.NEXT_PUBLIC_SOCKET_HOST, "Sockere is gere");
+
+    const connection = io(process.env.NEXT_PUBLIC_SOCKET_HOST);
     setSocket(connection);
   }, []);
 

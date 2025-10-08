@@ -6,7 +6,8 @@
       "Bash(openssl rand:*)",
       "Bash(npm ls:*)",
       "mcp__ide__getDiagnostics",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []
