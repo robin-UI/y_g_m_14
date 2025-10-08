@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
 
     if (existingUserByEmail) {
-      if (existingUserByEmail.isverified) {
+      if (existingUserByEmail.isVerified) {
         return Response.json({
           success: false,
           message: "User is already exist with this email"
@@ -52,8 +52,9 @@ export async function POST(request: Request) {
         password: hashedPassword,
         verifyCode,
         verifyCodeExpiry: expireDate,
-        isverified: false,
+        isVerified: false,
         role,
+        // about: "",
       })
 
       await newUser.save();

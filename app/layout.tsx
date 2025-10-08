@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 // import localFont from "next/font/local";
 import "./globals.css";
-import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
-import ChatIcon from "@/components/chat/ChatIcon";
+// import Header from "@/components/layout/Header";
+// import Footer from "@/components/layout/Footer";
+// import ChatIcon from "@/components/chat/ChatIcon";
 import QueryProvider from "@/components/QueryProvider";
 import { Toaster } from "@/components/ui/sonner";
 import SessionProvider from "@/providers/SessionProvider";
@@ -27,10 +27,7 @@ export default function RootLayout({
           <StoreProvider>
             <QueryProvider>
               <Toaster />
-              <Header />
               {children}
-              <ChatIcon />
-              <Footer />
             </QueryProvider>
           </StoreProvider>
         </SessionProvider>

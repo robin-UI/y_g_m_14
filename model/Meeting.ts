@@ -1,14 +1,16 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface Meeting extends Document {
-  subject: string;
+  subject?: string;
   date: Date;
   time: string;
   duration: number; // duration in minutes
   notes?: string;
   createdBy: mongoose.Schema.Types.ObjectId;
-//   attendee: mongoose.Schema.Types.ObjectId;
+  // attendee: mongoose.Schema.Types.ObjectId;
   status: 'pending' | 'confirmed' | 'cancelled';
+  meetingType: "public" | "privet";
+  gustName?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -16,7 +18,7 @@ export interface Meeting extends Document {
 const MeetingSchema: Schema<Meeting> = new mongoose.Schema({
   subject: {
     type: String,
-    required: [true, 'Meeting subject is required'],
+    // required: [true, 'Meeting subject is required'],
     trim: true,
   },
   date: {
@@ -29,7 +31,7 @@ const MeetingSchema: Schema<Meeting> = new mongoose.Schema({
   },
   duration: {
     type: Number,
-    required: [true, 'Meeting duration is required'],
+    // required: [true, 'Meeting duration is required'],
     min: [15, 'Meeting duration must be at least 15 minutes'],
     max: [180, 'Meeting duration cannot exceed 180 minutes'],
   },
@@ -52,6 +54,15 @@ const MeetingSchema: Schema<Meeting> = new mongoose.Schema({
     enum: ['pending', 'confirmed', 'cancelled'],
     default: 'pending',
   },
+  meetingType: {
+    type: String,
+    enum: ['public', 'privet'],
+    default: "public"
+  },
+  gustName: {
+    type: String,
+    default: ""
+  }
 }, {
   timestamps: true, // Adds createdAt and updatedAt fields
 });

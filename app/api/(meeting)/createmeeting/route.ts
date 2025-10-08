@@ -3,42 +3,42 @@ import dbConnect from "@/lib/dbConnect";
 import MeetingModel from "@/model/Meeting";
 import UserModel from "@/model/User";
 import { meetingFormSchema } from "@/types/meetingType";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 
 export async function POST(request: Request) {
   try {
     // Connect to the database
-    await dbConnect();    // Get the request body and validate auth
-    const body = await request.json();
-    const createdBy = body.userId;
+    await dbConnect();
 
-    if (!createdBy) {
-        return NextResponse.json(
-            { error: "Authentication required. Please provide user ID" },
-            { status: 401 }
-        );
+    // Get session
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { success: false, error: "Not authenticated" },
+        { status: 401 }
+      );
     }
+
+    // Get the request body
+    const body = await request.json();
+    const createdBy = session.user._id;
 
     // Validate the meeting data using Zod schema
     try {
       meetingFormSchema.parse(body);
     } catch (error) {
       return NextResponse.json(
-        { error: "Invalid meeting data", details: error },
+        { success: false, error: "Invalid meeting data", details: error },
         { status: 400 }
       );
     }
 
-    // Check if both users exist
-    // const [creator, attendee] = await Promise.all([
-    //   UserModel.findById(createdBy),
-    //   UserModel.findById(body.attendeeId),
-    // ]);
-
-    const creator = await UserModel.findById(createdBy)
-
+    // Verify user exists
+    const creator = await UserModel.findById(createdBy);
     if (!creator) {
       return NextResponse.json(
-        { error: "Invalid user ID(s)" },
+        { success: false, error: "User not found" },
         { status: 404 }
       );
     }
@@ -49,42 +49,22 @@ export async function POST(request: Request) {
       date: body.date,
       time: body.time,
       duration: body.duration,
-      notes: body.notes,
+      notes: body.notes || "",
       createdBy: createdBy,
-    //   attendee: body.attendeeId,
       status: "pending",
-    });    // Populate the creator and attendee information
+      meetingType: body.meetingType || "public",
+    });
+
+    // Populate the creator information
     const populatedMeeting = await MeetingModel.findById(meeting._id)
-      .populate('createdBy', 'name email');
-    //   .populate('attendee', 'name email')
+      .populate('createdBy', 'firstName lastName username email');
 
-    console.log("Meeting created:", populatedMeeting);
-    
-
-    // Return the created meeting with user details
     return NextResponse.json(
       {
+        success: true,
         message: "Meeting created successfully",
-        meeting: {
-          _id: meeting._id,
-          subject: meeting.subject,
-          date: meeting.date,
-          time: meeting.time,
-          duration: meeting.duration,
-          notes: meeting.notes,
-          status: meeting.status,
-        //   createdBy: {
-        //     _id: populatedMeeting.createdBy._id,
-        //     name: populatedMeeting.createdBy.name,
-        //     email: populatedMeeting.createdBy.email
-        //   },
-        //   attendee: {
-        //     _id: populatedMeeting.attendee._id,
-        //     name: populatedMeeting.attendee.name,
-        //     email: populatedMeeting.attendee.email
-        //   },
-          createdAt: meeting.createdAt
-        },
+        meeting: populatedMeeting,
+        room_id: meeting._id
       },
       { status: 201 }
     );
@@ -92,8 +72,8 @@ export async function POST(request: Request) {
     console.error("Create meeting error:", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error ? error.message : "Error creating meeting",
+        success: false,
+        error: error instanceof Error ? error.message : "Error creating meeting",
       },
       { status: 500 }
     );

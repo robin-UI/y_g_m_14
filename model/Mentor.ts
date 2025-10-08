@@ -2,7 +2,8 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface Mentor extends Document {
     userId: mongoose.Types.ObjectId;
-    linkedinBio: string;
+    socialLinks: string[];
+    isMentorVerified?: boolean;
     educationalDetails: {
         collegeName: string;
         degreeName: string;
@@ -12,16 +13,14 @@ export interface Mentor extends Document {
         role: string;
         experience: string;
     }[];
-    description?: string;
     price?: number;
-    skills?: string[];
-    fields?: string[];
-    Specializations?: string[];
+    skills?: string[]; //React js, Node js, MongoDB
+    fields?: string[]; //Web Development, Mobile Development
     Rating?: number;
     Reviews?: string[];
     location?: string;
     availability?: string;
-    createdAt: Date;
+    // createdAt: Date;
 }
 
 const MentorSchema: Schema = new Schema({
@@ -34,6 +33,10 @@ const MentorSchema: Schema = new Schema({
     linkedinBio: {
         type: String,
         // required: true
+    },
+    isMentorVerified: {
+        type: Boolean,
+        default: false
     },
     educationalDetails: [{
         collegeName: {
@@ -68,9 +71,6 @@ const MentorSchema: Schema = new Schema({
     Specializations: [{
         type: String
     }],
-    description: {
-        type: String
-    },
     price: {
         type: Number
     },

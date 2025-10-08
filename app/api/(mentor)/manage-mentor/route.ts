@@ -4,6 +4,7 @@ import Mentor from '@/model/Mentor';
 import User from '@/model/User';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/options';
+import { MentorType } from '@/schemas/mentorSchema';
 
 // GET - Retrieve mentor profile
 export async function GET(request: NextRequest) {
@@ -146,52 +147,49 @@ export async function PUT(request: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
       return NextResponse.json(
-        { success: false, message: 'Not authenticated' },
+        { success: false, error: 'Not authenticated' },
         { status: 401 }
       );
     }
 
-    const { name, email, linkedinBio, educationalDetails, workExperience } = await request.json();
+    const body = await request.json();
+    const {
+      socialLinks,
+      educationalDetails,
+      workExperience,
+      skills,
+      fields,
+      location,
+      availability,
+      price
+    } : MentorType = body;
 
     // Find mentor profile for current user
     const mentor = await Mentor.findOne({ userId: session.user._id });
     if (!mentor) {
       return NextResponse.json(
-        { success: false, message: 'Mentor profile not found' },
+        { success: false, error: 'Mentor profile not found. Please create a mentor profile first.' },
         { status: 404 }
       );
     }
 
-    interface educationalDetails {
-      collegeName: string;
-      degreeName: string;
-    }
+    // Build update data object with only provided fields
+    const updateData: MentorType = {};
 
-    interface workExperience {
-      companyName: string;
-      role: string;
-      experience: string;
-    }
-
-    interface MentorUpdateData {
-      name?: string;
-      email?: string;
-      linkedinBio?: string;
-      educationalDetails?: educationalDetails[];
-      workExperience?: workExperience[];
-    }
-
-    // Update mentor profile
-    const updateData: MentorUpdateData = {};
-    if (name !== undefined) updateData.name = name;
-    if (email !== undefined) updateData.email = email;
-    if (linkedinBio !== undefined) updateData.linkedinBio = linkedinBio;
+    // if (description !== undefined) updateData. = description;
+    if (socialLinks !== undefined) updateData.socialLinks = socialLinks;
     if (educationalDetails !== undefined) updateData.educationalDetails = educationalDetails;
     if (workExperience !== undefined) updateData.workExperience = workExperience;
+    if (skills !== undefined) updateData.skills = skills;
+    if (fields !== undefined) updateData.fields = fields;
+    if (location !== undefined) updateData.location = location;
+    if (availability !== undefined) updateData.availability = availability;
+    if (price !== undefined) updateData.price = price;
 
+    // Update mentor profile
     const updatedMentor = await Mentor.findByIdAndUpdate(
       mentor._id,
-      updateData,
+      { $set: updateData },
       { new: true, runValidators: true }
     ).populate('userId', 'firstName lastName username email');
 
@@ -201,18 +199,25 @@ export async function PUT(request: NextRequest) {
       mentor: updatedMentor
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error updating mentor profile:', error);
 
-    if (typeof error === 'object' && error !== null && 'code' in error && error.code === 11000) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
       return NextResponse.json(
-        { success: false, message: 'Email already exists' },
+        { success: false, error: 'Duplicate data found' },
         { status: 409 }
       );
     }
 
+    if (error && typeof error === 'object' && 'name' in error && error.name === 'ValidationError' && 'message' in error) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
-      { success: false, message: 'Internal server error' },
+      { success: false, error: 'Failed to update mentor profile' },
       { status: 500 }
     );
   }

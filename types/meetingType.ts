@@ -1,17 +1,14 @@
 import { z } from "zod";
 
 export interface MeetingType {
-  _id?: string;
   subject: string;
   date: Date;
   time: string;
   duration: number;
   notes?: string;
-  createdBy: string;
   // attendee: string;
-  status: "pending" | "confirmed" | "cancelled";
-  createdAt?: Date;
-  updatedAt?: Date;
+  // status: "pending" | "confirmed" | "cancelled";
+  meetingType: "public" | "privet"
 }
 
 export const meetingFormSchema = z.object({
@@ -41,12 +38,14 @@ export const meetingFormSchema = z.object({
     .min(15, "Duration must be at least 15 minutes")
     .max(180, "Duration cannot exceed 180 minutes"),
   notes: z.string().optional(),
-  userId: z.string({
-    required_error: "User ID is required",
-  }),
+  // userId: z.string({
+  //   required_error: "User ID is required",
+  // }),
   // attendeeId: z.string({
   //   required_error: "Please select an attendee",
   // }),
+  // status: z.enum(["pending", "confirmed", "cancelled"])
+  meetingType: z.enum(["public", "privet"])
 });
 
 export type MeetingFormData = z.infer<typeof meetingFormSchema>;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, } from "react";
 import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -11,14 +11,23 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar, Camera, Plus } from "lucide-react";
+// import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import MeetingForm from "@/components/meetings/MeetingForm";
 import MeetingList from "@/components/meetings/MeetingList";
 import { Meeting } from "@/components/meetings/MeetingCard";
 import { MeetingType } from "@/types/meetingType";
 import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+import moment from "moment";
+import { toast } from "sonner";
+// import { useWebSocket } from "@/providers/SocketProvider";
 // import router from 'next/router';
 
 type Meetings = {
@@ -36,7 +45,9 @@ type Meetings = {
 
 async function fetchMeetingList(): Promise<Meetings[]> {
   // Simulate fetching meetings from an API or database
-  const response = await fetch("/api/listmeetings?userId=682f085814cddb288b5ce447");
+  const response = await fetch(
+    "/api/listmeetings?userId=682f085814cddb288b5ce447"
+  );
   if (!response.ok) {
     throw new Error("Failed to fetch meetings");
   }
@@ -51,12 +62,12 @@ const Meetings = () => {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   // const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
-  const { toast } = useToast();
+  // const webSocket = useWebSocket();
 
   // Demo purposes only - in a real app, we'd check if user is authenticated
   const isAuthenticated = true;
 
-  const { isLoading} = useQuery({
+  const { isLoading } = useQuery({
     queryKey: ["meetings"],
     queryFn: fetchMeetingList,
   });
@@ -99,6 +110,44 @@ const Meetings = () => {
     }
   }, [meetings, isLoading]);
 
+  // useEffect(() => {
+  //   webSocket?.on("join_room", handleJoinRoom);
+  //   return () => {
+  //     webSocket?.off("join_room");
+  //   };
+  // }, [webSocket])
+  
+
+  // const handleJoinRoom = useCallback((data: { roomId: string }) => {
+  //   console.log("Room is joined", data);
+  // }, []);
+
+  const handleInstandMeeting = async () => {
+    const dateNow = new Date();
+    const res = await axios.post("/api/createmeeting", {
+      subject: "instant meeting",
+      date: dateNow,
+      time: moment().format("h:mm:ss"),
+      duration: 30,
+      notes: "",
+      meetingType: "public",
+    });
+    if (res.statusText !== "Created") {
+      toast.error("Some thing went wrong", {
+        description: `Error: ${res.data?.message}`,
+      });
+    }
+    const room_id = res.data?.room_id;
+    console.log(room_id, "room id is here");
+    
+    if (!room_id) {
+      toast.error("Room ID not found");
+      return;
+    }
+    router.push('/meeting-room/'+ room_id)
+    // webSocket?.emit("join_room", { roomId: room_id });
+  };
+
   const handleCreateMeeting = (data: Partial<Meeting>) => {
     const newMeeting: Meeting = {
       id: uuidv4(),
@@ -111,8 +160,7 @@ const Meetings = () => {
 
     setMeetings((prev) => [...prev, newMeeting]);
 
-    toast({
-      title: "Meeting Scheduled",
+    toast("Meeting Scheduled", {
       description: `Successfully scheduled "${newMeeting.subject}"`,
     });
   };
@@ -124,8 +172,7 @@ const Meetings = () => {
       )
     );
 
-    toast({
-      title: "Meeting Updated",
+    toast("Meeting Updated", {
       description: "Your meeting has been updated successfully",
     });
   };
@@ -137,8 +184,7 @@ const Meetings = () => {
       prevMeetings.filter((meeting) => meeting.id !== id)
     );
 
-    toast({
-      title: "Meeting Cancelled",
+    toast("Meeting Cancelled", {
       description: meetingToDelete
         ? `"${meetingToDelete.subject}" has been cancelled`
         : "Meeting has been cancelled",
@@ -220,19 +266,39 @@ const Meetings = () => {
             </p>
           </div>
 
-          <Dialog>
-            <DialogTrigger asChild>
+          <Popover>
+            <PopoverTrigger>
               <Button className="bg-gradient-to-r from-primary to-secondary hover:shadow-lg transition-all">
-                <Plus className="mr-2 h-4 w-4" /> Schedule New Meeting
+                <Plus className="mr-2 h-4 w-4" />
+                New Meeting
               </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md backdrop-blur-xl bg-white/80 dark:bg-gray-900/80 border border-white/20">
-              <DialogHeader>
-                <DialogTitle>Schedule a New Meeting</DialogTitle>
-              </DialogHeader>
-              <MeetingForm onSubmit={handleCreateMeeting} />
-            </DialogContent>
-          </Dialog>
+            </PopoverTrigger>
+            <PopoverContent align="end" asChild>
+              <div className="flex flex-col gap-2">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button className="w-full flex gap-2 justify-start items-center">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      Schedule New Meeting
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md backdrop-blur-xl bg-white/80 dark:bg-gray-900/80 border border-white/20">
+                    <DialogHeader>
+                      <DialogTitle>Schedule a New Meeting</DialogTitle>
+                    </DialogHeader>
+                    <MeetingForm onSubmit={handleCreateMeeting} />
+                  </DialogContent>
+                </Dialog>
+                <Button
+                  className="w-full flex gap-2 justify-start items-center"
+                  onClick={() => handleInstandMeeting()}
+                >
+                  <Camera className="mr-2 h-4 w-4" />
+                  Instant Meeting
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Stats cards */}

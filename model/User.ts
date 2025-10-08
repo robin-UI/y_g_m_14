@@ -5,6 +5,7 @@ export interface User extends Document {
   lastName: string;
   username: string;
   email: string;
+  about: string;
   mobileNmber: string;
   password: string;
   verifyCode: string;
@@ -32,6 +33,13 @@ const userSchema: Schema<User> = new mongoose.Schema({
     unique: true,
     minlength: [3, 'Username must be at least 3 characters long'],
     maxlength: [30, 'Username cannot exceed 30 characters'],
+  },
+  about: {
+    type: String,
+    // trim: true,
+    default: "",
+    minimize: false,
+    maxlength: [500, 'About section cannot exceed 500 characters'],
   },
   email: {
     type: String,
@@ -76,7 +84,8 @@ const userSchema: Schema<User> = new mongoose.Schema({
     default: true,
   },
 }, {
-  timestamps: true
+  timestamps: true,
+  minimize: false  // This ensures empty string fields are saved to the database
 });
 
 // const UserModel =

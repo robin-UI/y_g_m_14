@@ -1,17 +1,38 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface Student extends Document {
-  userid: string;
-  education: string;
+  userId: mongoose.Types.ObjectId;
+  educationalDetails: {
+    collegeName: string;
+    degreeName: string;
+  }[];
   interested: string[];
   skills: string[];
 }
 
 const StudentSchema: Schema = new Schema({
-  userid: { type: String, required: true },
-  education: { type: String, required: true },
-  interested: [{ type: String, required: true }],
-  skills: [{ type: String, required: true }]
+  userId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    unique: true
+  },
+  educationalDetails: {
+    type: [{
+      collegeName: {
+        type: String,
+        required: true
+      },
+      degreeName: {
+        type: String,
+        required: true
+      }
+    }], default: []
+  },
+  interested: [{ type: String, }],
+  skills: [{
+    type: String
+  }],
 });
 
 

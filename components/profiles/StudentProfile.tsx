@@ -14,21 +14,39 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import * as z from "zod";
-import { Check, PencilLine, User, ImagePlus, BookOpen, Target, Lightbulb } from "lucide-react";
+import {
+  PencilLine,
+  User,
+  ImagePlus,
+  BookOpen,
+  Lightbulb,
+  GraduationCap,
+  Plus,
+  X,
+  Target,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import ProfileProgressBar from "@/components/ProfileProgressBar";
+import axios, { AxiosError } from "axios";
+import { ApiResponse } from "@/types/ApiResponse";
+import { toast } from "sonner";
 
 const studentProfileSchema = z.object({
-  fullName: z
-    .string()
-    .min(2, { message: "Name must be at least 2 characters." }),
-  bio: z.string().optional(),
-  education: z.string().optional(),
-  interests: z.string().optional(),
-  skills: z.string().optional(),
-  location: z.string().optional(),
-  learningGoals: z.string().optional(),
+  firstname: z.string(),
+  lastname: z.string(),
+  about: z.string(),
+  education: z
+    .array(
+      z.object({
+        collegeName: z.string(),
+        degreeName: z.string(),
+      })
+    )
+    ,
+  interests: z.array(z.string()),
+  skills: z.array(z.string()),
 });
 
 type StudentProfileValues = z.infer<typeof studentProfileSchema>;
@@ -39,24 +57,37 @@ interface StudentProfileProps {
   initialData?: Partial<StudentProfileValues>;
 }
 
-export default function StudentProfile({ username, isOwnProfile, initialData }: StudentProfileProps) {
+export default function StudentProfile({
+  username,
+  isOwnProfile,
+  initialData,
+}: StudentProfileProps) {
   const [profileCompletion, setProfileCompletion] = useState(20);
   const [isEditing, setIsEditing] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const defaultValues: Partial<StudentProfileValues> = {
-    fullName: initialData?.fullName || "",
-    bio: initialData?.bio || "",
-    education: initialData?.education || "",
-    interests: initialData?.interests || "",
-    skills: initialData?.skills || "",
-    location: initialData?.location || "",
-    learningGoals: initialData?.learningGoals || "",
+    firstname: initialData?.firstname || "",
+    lastname: initialData?.lastname || "",
+    about: initialData?.about || "",
+    education: initialData?.education || [],
+    interests: initialData?.interests || [],
+    skills: initialData?.skills || [],
   };
 
   const form = useForm<StudentProfileValues>({
     resolver: zodResolver(studentProfileSchema),
     defaultValues,
+  });
+
+  const {
+    fields: educationFields,
+    append: appendEducation,
+    remove: removeEducation,
+  } = useFieldArray({
+    control: form.control,
+    name: "education",
   });
 
   const calculateProfileCompletion = useCallback(
@@ -82,14 +113,21 @@ export default function StudentProfile({ username, isOwnProfile, initialData }: 
 
   useEffect(() => {
     const subscription = form.watch((value) => {
-      calculateProfileCompletion(value);
+      // Filter out undefined values from arrays
+      const cleanedValue = {
+        ...value,
+        interests: value.interests?.filter((i): i is string => i !== undefined),
+        skills: value.skills?.filter((s): s is string => s !== undefined),
+        education: value.education?.filter((e): e is { collegeName: string; degreeName: string } => e !== undefined),
+      };
+      calculateProfileCompletion(cleanedValue);
     });
     return () => subscription.unsubscribe();
-  }, [form, profileImage]);
+  }, [form, profileImage, calculateProfileCompletion]);
 
-  const onSubmit = (data: StudentProfileValues) => {
-    console.log("Student profile data submitted:", data);
-    setIsEditing(false);
+  const onSubmit = async (data: StudentProfileValues) => {
+    await updateprofile(data);
+    console.log(data);
   };
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,15 +142,79 @@ export default function StudentProfile({ username, isOwnProfile, initialData }: 
   };
 
   const sectionCompletion = {
-    basic: profileImage && form.getValues().fullName ? 100 : 50,
-    education: form.getValues().education ? 100 : 0,
-    interests: form.getValues().interests ? 100 : 0,
-    skills: form.getValues().skills ? 100 : 0,
-    goals: form.getValues().learningGoals ? 100 : 0,
+    basic: profileImage && form.getValues().firstname ? 100 : 50,
+    education: form.getValues().education && form.getValues().education.length > 0 ? 100 : 0,
+    interests: form.getValues().interests && form.getValues().interests.length > 0 ? 100 : 0,
+    skills: form.getValues().skills && form.getValues().skills.length > 0 ? 100 : 0,
+  };
+
+  const [skillInput, setSkillInput] = useState("");
+  const [interestInput, setInterestInput] = useState("");
+
+  const addSkill = () => {
+    if (skillInput.trim()) {
+      const currentSkills = form.getValues().skills || [];
+      form.setValue("skills", [...currentSkills, skillInput.trim()]);
+      setSkillInput("");
+    }
+  };
+
+  const removeSkill = (index: number) => {
+    const currentSkills = form.getValues().skills || [];
+    form.setValue(
+      "skills",
+      currentSkills.filter((_, i) => i !== index)
+    );
+  };
+
+  const addInterest = () => {
+    if (interestInput.trim()) {
+      const currentInterests = form.getValues().interests || [];
+      form.setValue("interests", [...currentInterests, interestInput.trim()]);
+      setInterestInput("");
+    }
+  };
+
+  const removeInterest = (index: number) => {
+    const currentInterests = form.getValues().interests || [];
+    form.setValue(
+      "interests",
+      currentInterests.filter((_, i) => i !== index)
+    );
+  };
+
+  const updateprofile = async (reqdata: StudentProfileValues) => {
+    try {
+      setIsUpdating(true);
+
+      const resuser = await axios.put("/api/updateuser", {
+        firstName: reqdata.firstname,
+        lastName: reqdata.lastname,
+        about: reqdata.about,
+      });
+
+      const resstudent = await axios.put("/api/manage-student", {
+        educationalDetails: reqdata.education,
+        interested: reqdata.interests,
+        skills: reqdata.skills,
+      });
+
+      if (resuser.data.success && resstudent.data.success) {
+        toast.success("Profile updated successfully!");
+        setIsEditing(false);
+      }
+
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      const axiosError = error as AxiosError<ApiResponse>;
+      toast.error(axiosError.response?.data.message || "Failed to update profile. Please try again.");
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   return (
-    <main className="flex-grow">
+    <main className="flex-grow overflow-x-hidden">
       <div className="relative py-16">
         {/* Decorative blurred circles */}
         <div className="absolute -z-10 w-96 h-96 bg-primary/20 rounded-full blur-3xl top-10 left-1/3 opacity-70"></div>
@@ -156,14 +258,18 @@ export default function StudentProfile({ username, isOwnProfile, initialData }: 
                   <div className="flex flex-col md:flex-row justify-between items-center mb-4">
                     <div>
                       <h1 className="text-2xl md:text-3xl font-bold text-grey-800">
-                        {form.getValues().fullName || username}
+                        {form.getValues().firstname +
+                          " " +
+                          form.getValues().lastname || username}
                       </h1>
                       <div className="flex items-center gap-2 text-grey-600">
                         <BookOpen size={16} />
                         <span>Student</span>
                       </div>
-                      {form.getValues().bio && (
-                        <p className="text-grey-600 mt-2">{form.getValues().bio}</p>
+                      {form.getValues().about && (
+                        <p className="text-grey-600 mt-2">
+                          {form.getValues().about}
+                        </p>
                       )}
                     </div>
 
@@ -178,7 +284,9 @@ export default function StudentProfile({ username, isOwnProfile, initialData }: 
                     )}
                   </div>
 
-                  {isOwnProfile && <ProfileProgressBar completion={profileCompletion} />}
+                  {isOwnProfile && (
+                    <ProfileProgressBar completion={profileCompletion} />
+                  )}
                 </div>
               </div>
             </div>
@@ -208,25 +316,16 @@ export default function StudentProfile({ username, isOwnProfile, initialData }: 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <FormField
                         control={form.control}
-                        name="fullName"
+                        name="firstname"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Full Name</FormLabel>
+                            <FormLabel>First Name</FormLabel>
                             <FormControl>
-                              <div className="relative">
-                                <Input
-                                  placeholder="Your full name"
-                                  {...field}
-                                  className="pr-10"
-                                  disabled={!isEditing}
-                                />
-                                {field.value && (
-                                  <Check
-                                    size={16}
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-500"
-                                  />
-                                )}
-                              </div>
+                              <Input
+                                placeholder="Your first name"
+                                {...field}
+                                disabled={!isEditing}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -235,25 +334,16 @@ export default function StudentProfile({ username, isOwnProfile, initialData }: 
 
                       <FormField
                         control={form.control}
-                        name="location"
+                        name="lastname"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Location</FormLabel>
+                            <FormLabel>Last Name</FormLabel>
                             <FormControl>
-                              <div className="relative">
-                                <Input
-                                  placeholder="City, Country"
-                                  {...field}
-                                  className="pr-10"
-                                  disabled={!isEditing}
-                                />
-                                {field.value && (
-                                  <Check
-                                    size={16}
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-500"
-                                  />
-                                )}
-                              </div>
+                              <Input
+                                placeholder="Your last name"
+                                {...field}
+                                disabled={!isEditing}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -263,25 +353,17 @@ export default function StudentProfile({ username, isOwnProfile, initialData }: 
                       <div className="md:col-span-2">
                         <FormField
                           control={form.control}
-                          name="bio"
+                          name="about"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Biography</FormLabel>
+                              <FormLabel>About Me</FormLabel>
                               <FormControl>
-                                <div className="relative">
-                                  <Textarea
-                                    placeholder="Tell us a little about yourself and your learning journey..."
-                                    className="resize-none min-h-[120px]"
-                                    {...field}
-                                    disabled={!isEditing}
-                                  />
-                                  {field.value && (
-                                    <Check
-                                      size={16}
-                                      className="absolute right-3 top-3 text-green-500"
-                                    />
-                                  )}
-                                </div>
+                                <Textarea
+                                  placeholder="Tell us a little about yourself and your learning journey..."
+                                  className="resize-none min-h-[120px]"
+                                  {...field}
+                                  disabled={!isEditing}
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -294,93 +376,104 @@ export default function StudentProfile({ username, isOwnProfile, initialData }: 
 
                 {/* Education */}
                 <Card className="border border-grey-200/50 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow duration-300">
-                  <CardHeader className="relative bg-gradient-to-r from-primary/5 to-primary/10 pb-8">
+                  <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10">
                     <div className="flex justify-between items-center">
                       <h2 className="text-xl font-semibold text-grey-800 flex items-center gap-2">
-                        <BookOpen size={20} />
+                        <GraduationCap size={20} />
                         Education
                       </h2>
-                      {isOwnProfile && (
-                        <div className="flex items-center bg-white/90 px-3 py-1 rounded-full text-sm font-medium text-primary">
-                          <span>{sectionCompletion.education}% Complete</span>
-                        </div>
+                      {isEditing && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() =>
+                            appendEducation({ collegeName: "", degreeName: "" })
+                          }
+                        >
+                          <Plus className="h-4 w-4 mr-1" /> Add
+                        </Button>
                       )}
                     </div>
                   </CardHeader>
 
                   <CardContent className="pt-6">
-                    <FormField
-                      control={form.control}
-                      name="education"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Education Background</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Textarea
-                                placeholder="Your current studies, degree program, institution, year of study..."
-                                className="resize-none min-h-[100px]"
-                                {...field}
-                                disabled={!isEditing}
-                              />
-                              {field.value && (
-                                <Check
-                                  size={16}
-                                  className="absolute right-3 top-3 text-green-500"
+                    {educationFields.length === 0 && !isEditing ? (
+                      <p className="text-grey-500 text-center py-4">
+                        No education added yet
+                      </p>
+                    ) : (
+                      <div className="space-y-6">
+                        {educationFields.map((field, index) => (
+                          <div
+                            key={field.id}
+                            className={`${
+                              isEditing
+                                ? "border border-grey-200 rounded-lg p-4"
+                                : "pb-6 border-b border-grey-200 last:border-0"
+                            }`}
+                          >
+                            {isEditing ? (
+                              <div className="space-y-3">
+                                <div className="flex justify-between items-start">
+                                  <h3 className="font-medium text-grey-800">
+                                    Education #{index + 1}
+                                  </h3>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeEducation(index)}
+                                  >
+                                    <X className="h-4 w-4 text-red-500" />
+                                  </Button>
+                                </div>
+                                <FormField
+                                  control={form.control}
+                                  name={`education.${index}.degreeName`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Degree</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          placeholder="Bachelor of Science in Computer Science"
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
                                 />
-                              )}
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Learning Goals */}
-                <Card className="border border-grey-200/50 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow duration-300">
-                  <CardHeader className="relative bg-gradient-to-r from-primary/5 to-primary/10 pb-8">
-                    <div className="flex justify-between items-center">
-                      <h2 className="text-xl font-semibold text-grey-800 flex items-center gap-2">
-                        <Target size={20} />
-                        Learning Goals
-                      </h2>
-                      {isOwnProfile && (
-                        <div className="flex items-center bg-white/90 px-3 py-1 rounded-full text-sm font-medium text-primary">
-                          <span>{sectionCompletion.goals}% Complete</span>
-                        </div>
-                      )}
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="pt-6">
-                    <FormField
-                      control={form.control}
-                      name="learningGoals"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>What do you want to learn?</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Textarea
-                                placeholder="Describe your learning goals, what skills you want to develop, career aspirations..."
-                                className="resize-none min-h-[100px]"
-                                {...field}
-                                disabled={!isEditing}
-                              />
-                              {field.value && (
-                                <Check
-                                  size={16}
-                                  className="absolute right-3 top-3 text-green-500"
+                                <FormField
+                                  control={form.control}
+                                  name={`education.${index}.collegeName`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Institution</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          placeholder="University Name"
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
                                 />
-                              )}
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                              </div>
+                            ) : (
+                              <div>
+                                <h3 className="font-semibold text-grey-800 text-lg">
+                                  {form.watch(`education.${index}.degreeName`)}
+                                </h3>
+                                <p className="text-grey-600 mt-1">
+                                  {form.watch(`education.${index}.collegeName`)}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -403,32 +496,47 @@ export default function StudentProfile({ username, isOwnProfile, initialData }: 
                     </CardHeader>
 
                     <CardContent className="pt-6">
-                      <FormField
-                        control={form.control}
-                        name="skills"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Current Skills</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Textarea
-                                  placeholder="List your current skills and abilities (e.g., Python, Mathematics, Communication)"
-                                  className="resize-none min-h-[100px]"
-                                  {...field}
-                                  disabled={!isEditing}
-                                />
-                                {field.value && (
-                                  <Check
-                                    size={16}
-                                    className="absolute right-3 top-3 text-green-500"
-                                  />
-                                )}
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
+                      {isEditing && (
+                        <div className="flex gap-2 mb-4">
+                          <Input
+                            placeholder="Add a skill (e.g., React, Python)"
+                            value={skillInput}
+                            onChange={(e) => setSkillInput(e.target.value)}
+                            onKeyPress={(e) =>
+                              e.key === "Enter" && (e.preventDefault(), addSkill())
+                            }
+                          />
+                          <Button type="button" onClick={addSkill}>
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {(form.watch("skills") || []).length === 0 ? (
+                          <p className="text-grey-500 text-center w-full py-2">
+                            No skills added yet
+                          </p>
+                        ) : (
+                          (form.watch("skills") || []).map((skill, index) => (
+                            <Badge
+                              key={index}
+                              variant="secondary"
+                              className="px-3 py-1 text-sm"
+                            >
+                              {skill}
+                              {isEditing && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeSkill(index)}
+                                  className="ml-2 text-red-500 hover:text-red-700"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              )}
+                            </Badge>
+                          ))
                         )}
-                      />
+                      </div>
                     </CardContent>
                   </Card>
 
@@ -449,32 +557,47 @@ export default function StudentProfile({ username, isOwnProfile, initialData }: 
                     </CardHeader>
 
                     <CardContent className="pt-6">
-                      <FormField
-                        control={form.control}
-                        name="interests"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Your Interests</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Textarea
-                                  placeholder="Share your interests and areas you're passionate about"
-                                  className="resize-none min-h-[100px]"
-                                  {...field}
-                                  disabled={!isEditing}
-                                />
-                                {field.value && (
-                                  <Check
-                                    size={16}
-                                    className="absolute right-3 top-3 text-green-500"
-                                  />
-                                )}
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
+                      {isEditing && (
+                        <div className="flex gap-2 mb-4">
+                          <Input
+                            placeholder="Add an interest (e.g., Web Development)"
+                            value={interestInput}
+                            onChange={(e) => setInterestInput(e.target.value)}
+                            onKeyPress={(e) =>
+                              e.key === "Enter" && (e.preventDefault(), addInterest())
+                            }
+                          />
+                          <Button type="button" onClick={addInterest}>
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {(form.watch("interests") || []).length === 0 ? (
+                          <p className="text-grey-500 text-center w-full py-2">
+                            No interests added yet
+                          </p>
+                        ) : (
+                          (form.watch("interests") || []).map((interest, index) => (
+                            <Badge
+                              key={index}
+                              variant="outline"
+                              className="px-3 py-1 text-sm border-primary text-primary"
+                            >
+                              {interest}
+                              {isEditing && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeInterest(index)}
+                                  className="ml-2 text-red-500 hover:text-red-700"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              )}
+                            </Badge>
+                          ))
                         )}
-                      />
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
@@ -490,14 +613,16 @@ export default function StudentProfile({ username, isOwnProfile, initialData }: 
                       form.reset();
                       setIsEditing(false);
                     }}
+                    disabled={isUpdating}
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
                     className="bg-gradient-to-r from-primary to-primary-dark text-white hover:shadow-md hover:shadow-primary/20"
+                    disabled={isUpdating}
                   >
-                    Save Changes
+                    {isUpdating ? "Saving..." : "Save Changes"}
                   </Button>
                 </div>
               )}

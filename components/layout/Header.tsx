@@ -103,10 +103,12 @@ const Header = () => {
                   <ChevronDown size={16} className="text-grey-500" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => router.push("/profile")}>
+                    <Link href={`/u/${currentUser?.username}`}>
+                  <DropdownMenuItem>
                     <UserRound className="mr-2 h-4 w-4" />
                     <span>My Profile</span>
                   </DropdownMenuItem>
+                    </Link>
                   <DropdownMenuItem onClick={() => router.push("/meetings")}>
                     <VideoIcon className="mr-2 h-4 w-4" />
                     <span>My Meetings</span>

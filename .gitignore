@@ -10,6 +10,7 @@
 # testing
 
 /coverage
+/socket_server
 
 # next.js
 /.next/
