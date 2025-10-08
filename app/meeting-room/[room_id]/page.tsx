@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { useWebSocket } from "@/providers/SocketProvider";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import peerService from "@/helpers/peer";
 
@@ -52,18 +52,59 @@ interface JoinRequest {
 
 const MeetingRoom = () => {
   const params = useParams();
+  const router = useRouter();
   const { data: session, status } = useSession();
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isAudioOn, setIsAudioOn] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      text: "Welcome to the meeting! How can I help you today?",
-      sender: "mentor",
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
+
+  // Notification sound function
+  const playNotificationSound = (type: 'message' | 'request' | 'admitted') => {
+    try {
+      // const audio = new Audio();
+      // Using different frequencies for different notification types
+      const context = new AudioContext();
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(context.destination);
+
+      // Different sounds for different types
+      if (type === 'message') {
+        oscillator.frequency.value = 800;
+        gainNode.gain.setValueAtTime(0.3, context.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
+        oscillator.start(context.currentTime);
+        oscillator.stop(context.currentTime + 0.3);
+      } else if (type === 'request') {
+        // Two tone notification for join request
+        oscillator.frequency.value = 600;
+        gainNode.gain.setValueAtTime(0.3, context.currentTime);
+        oscillator.start(context.currentTime);
+        oscillator.stop(context.currentTime + 0.2);
+
+        const oscillator2 = context.createOscillator();
+        const gainNode2 = context.createGain();
+        oscillator2.connect(gainNode2);
+        gainNode2.connect(context.destination);
+        oscillator2.frequency.value = 800;
+        gainNode2.gain.setValueAtTime(0.3, context.currentTime + 0.2);
+        oscillator2.start(context.currentTime + 0.2);
+        oscillator2.stop(context.currentTime + 0.4);
+      } else if (type === 'admitted') {
+        // Success sound for admission
+        oscillator.frequency.value = 1000;
+        gainNode.gain.setValueAtTime(0.3, context.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.5);
+        oscillator.start(context.currentTime);
+        oscillator.stop(context.currentTime + 0.5);
+      }
+    } catch (error) {
+      console.error('Error playing notification sound:', error);
+    }
+  };
   const [inputValue, setInputValue] = useState("");
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [remoteSocketId, setRemoteSocketId] = useState<string>("");
@@ -226,35 +267,36 @@ const MeetingRoom = () => {
       const stream = localVideoRef.current.srcObject as MediaStream;
       stream.getTracks().forEach((track) => track.stop());
     }
+
+    // Close peer connection
+    peerService.peer.close();
+
+    // Emit leave event to socket
+    webSocket?.emit("leave_room", { roomId: room_id });
+
     toast("Call Ended", {
       description: "The meeting has been ended",
     });
-    // navigate('/meetings');
+
+    // Redirect based on user type
+    if (isHost) {
+      router.push('/meetings');
+    } else {
+      router.push('/');
+    }
   };
 
   const handleSendMessage = () => {
     if (inputValue.trim() === "") return;
 
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      text: inputValue,
-      sender: "user",
-      timestamp: new Date(),
-    };
+    // Emit message to socket
+    webSocket?.emit("send_message", {
+      roomId: room_id,
+      message: inputValue,
+      sender: session?.user?.username || nickname || "Guest",
+    });
 
-    setMessages((prev) => [...prev, newMessage]);
     setInputValue("");
-
-    // Simulate mentor response
-    setTimeout(() => {
-      const mentorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: "Thanks for your message! I'm here to help.",
-        sender: "mentor",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, mentorMessage]);
-    }, 1000);
   };
 
   const formatTime = (date: Date) => {
@@ -324,6 +366,9 @@ const MeetingRoom = () => {
         console.log("Received join request but user is not host");
         return;
       }
+
+      // Play notification sound
+      playNotificationSound('request');
 
       // setJoinRequests((prev) => [...prev, request]);
       setCurrentRequest(request);
@@ -415,6 +460,9 @@ const MeetingRoom = () => {
   // Handle admission response for guest users
   const handleAdmissionResponse = useCallback((data: { admitted: boolean; hostName?: string; hostSocketId?: string }) => {
     if (data.admitted) {
+      // Play success notification sound
+      playNotificationSound('admitted');
+
       setIsJoined(true);
       toast.success("You have been admitted to the meeting");
 
@@ -435,18 +483,36 @@ const MeetingRoom = () => {
     console.log("Room is joined", data);
   }, []);
 
+  // Handle incoming chat messages
+  const handleReceiveMessage = useCallback((data: { id: string; text: string; sender: string; timestamp: string; socketId: string }) => {
+    const newMessage: Message = {
+      id: data.id,
+      text: data.text,
+      sender: data.socketId === webSocket?.id ? "user" : "mentor",
+      timestamp: new Date(data.timestamp),
+    };
+    setMessages((prev) => [...prev, newMessage]);
+
+    // Play notification sound only for messages from others
+    if (data.socketId !== webSocket?.id) {
+      playNotificationSound('message');
+    }
+  }, [webSocket]);
+
   // Handle when another user joins the room
   const handleUserJoined = useCallback(
     async ({ username, socketId }: { username: string; socketId: string }) => {
       console.log("User joined:", username, socketId);
-      toast.info(`${username} joined the meeting`);
 
-      // Set remote user name
-      setRemoteUserName(username);
-
-      // If I'm the host, initiate call to the new user
+      // Only process this if I'm the host
+      // Guests will get their remote user info from admission_response
       if (isHost) {
+        toast.info(`${username} joined the meeting`);
+
+        // Set remote user name (guest's nickname)
+        setRemoteUserName(username);
         setRemoteSocketId(socketId);
+
         try {
           const offer = await peerService.getOffer();
           webSocket?.emit("offer", {
@@ -460,6 +526,33 @@ const MeetingRoom = () => {
       }
     },
     [isHost, webSocket]
+  );
+
+  // Handle when another user leaves the room
+  const handleUserLeft = useCallback(
+    ({ username }: { socketId: string; username: string }) => {
+      console.log("User left:", username);
+      toast.info(`${username} left the meeting`);
+
+      // Stop local media
+      if (localVideoRef.current?.srcObject) {
+        const stream = localVideoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach((track) => track.stop());
+      }
+
+      // Close peer connection
+      peerService.peer.close();
+
+      // Redirect based on user type
+      setTimeout(() => {
+        if (isHost) {
+          router.push('/meetings');
+        } else {
+          router.push('/');
+        }
+      }, 1500);
+    },
+    [isHost, router]
   );
 
   // Socket event listeners
@@ -477,8 +570,10 @@ const MeetingRoom = () => {
 
     webSocket.on("join_room", handleJoinRoom);
     webSocket.on("user_joined", handleUserJoined);
+    webSocket.on("user_left", handleUserLeft);
     webSocket.on("join_request", handleJoinRequest);
     webSocket.on("admission_response", handleAdmissionResponse);
+    webSocket.on("receive_message", handleReceiveMessage);
     webSocket.on("offer", handleIncomingCall);
     webSocket.on("answer_final", handleCallAccepted);
     webSocket.on("ice_candidate", handleIceCandidate);
@@ -486,8 +581,10 @@ const MeetingRoom = () => {
     return () => {
       webSocket.off("join_room");
       webSocket.off("user_joined", handleUserJoined);
+      webSocket.off("user_left", handleUserLeft);
       webSocket.off("join_request");
       webSocket.off("admission_response");
+      webSocket.off("receive_message", handleReceiveMessage);
       webSocket.off("offer", handleIncomingCall);
       webSocket.off("answer_final", handleCallAccepted);
       webSocket.off("ice_candidate", handleIceCandidate);
@@ -499,8 +596,10 @@ const MeetingRoom = () => {
     session,
     handleJoinRoom,
     handleUserJoined,
+    handleUserLeft,
     handleJoinRequest,
     handleAdmissionResponse,
+    handleReceiveMessage,
     handleIncomingCall,
     handleCallAccepted,
     handleIceCandidate,
