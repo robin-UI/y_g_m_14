@@ -14,10 +14,12 @@ async function dbConnect(): Promise<void> {
   }
 
   try {
-    // Attempt to connect to the database 
-    // mongodb+srv://Robin:DXd7RG4HYK0r8I88@cluster0.rediqjw.mongodb.net/Y_G_M?retryWrites=true&w=majority&appName=Cluster0
-    const db = await mongoose.connect(process.env.MONGODB_URI || '', {});
-    // const db = await mongoose.connect('mongodb+srv://Robin:uUcadUotK6LI3Q1G@cluster0.rediqjw.mongodb.net/Y_G_M?retryWrites=true&w=majority&appName=Cluster0', {});
+    // Attempt to connect to the database
+    const db = await mongoose.connect(process.env.MONGODB_URI || '', {
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    });
 
     connection.isConnected = db.connections[0].readyState;
 
@@ -25,8 +27,8 @@ async function dbConnect(): Promise<void> {
   } catch (error) {
     console.error('Database connection failed:', error);
 
-    // Graceful exit in case of a connection error
-    process.exit(1);
+    // In serverless environments, throw error instead of exiting
+    throw new Error('Failed to connect to database');
   }
 }
 
