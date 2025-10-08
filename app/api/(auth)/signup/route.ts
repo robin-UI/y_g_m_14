@@ -2,7 +2,7 @@ import dbConnect from "@/lib/dbConnect";
 import mailSender from "@/helpers/mailsend";
 import UserModel from "@/model/User";
 
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import Mentor from "@/model/Mentor";
 import Student from "@/model/Student";
 
@@ -21,6 +21,8 @@ export async function POST(request: Request) {
         status: 400,
       });
     }
+
+    
 
     const existingUserByEmail = await UserModel.findOne({ email });
     const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -121,10 +123,11 @@ export async function POST(request: Request) {
     }, { status: 201 })
 
   } catch (error) {
-    console.error("Error regstring user", error)
+    console.error("Error registering user", error)
     return Response.json({
       success: false,
-      message: "Error regstring User"
+      message: "Error registering User",
+      error: error instanceof Error ? error.message : "Unknown error"
     }, {
       status: 500
     })
