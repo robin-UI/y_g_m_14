@@ -48,6 +48,8 @@ interface JoinRequest {
   userId: string;
   nickname: string;
   socketId: string;
+  profilePicture?: string;
+  isLoggedIn?: boolean;
 }
 
 const MeetingRoom = () => {
@@ -148,8 +150,10 @@ const MeetingRoom = () => {
         }
 
         // Add tracks to peer connection
-        for (const track of stream.getTracks()) {
-          peerService.peer.addTrack(track, stream);
+        if (peerService.peer) {
+          for (const track of stream.getTracks()) {
+            peerService.peer.addTrack(track, stream);
+          }
         }
       } catch (error) {
         console.error("Error accessing media devices:", error);
@@ -169,6 +173,25 @@ const MeetingRoom = () => {
       }
     };
   }, []);
+
+  // Re-add local tracks when remote socket ID changes (indicates new connection)
+  useEffect(() => {
+    if (!remoteSocketId || !localVideoRef.current?.srcObject || !peerService.peer) return;
+
+    console.log("Re-adding local tracks to peer connection for new connection");
+    const stream = localVideoRef.current.srcObject as MediaStream;
+
+    // Check if tracks are already added to avoid duplicates
+    const senders = peerService.peer.getSenders();
+    const existingTracks = senders.map(sender => sender.track);
+
+    for (const track of stream.getTracks()) {
+      if (!existingTracks.includes(track)) {
+        peerService.peer.addTrack(track, stream);
+        console.log("Added track:", track.kind);
+      }
+    }
+  }, [remoteSocketId]);
 
   // Handle incoming offer (for answering peer)
   const handleIncomingCall = useCallback(
@@ -201,18 +224,21 @@ const MeetingRoom = () => {
 
   // Handle incoming tracks (remote video/audio)
   useEffect(() => {
+    if (!peerService.peer) return;
+
     const handleTrack = (ev: RTCTrackEvent) => {
       console.log("GOT TRACKS!!", ev.streams);
       const [stream] = ev.streams;
       setRemoteStream(stream);
     };
 
-    peerService.peer.addEventListener("track", handleTrack);
+    const currentPeer = peerService.peer;
+    currentPeer.addEventListener("track", handleTrack);
 
     return () => {
-      peerService.peer.removeEventListener("track", handleTrack);
+      currentPeer.removeEventListener("track", handleTrack);
     };
-  }, []);
+  }, [remoteSocketId]); // Re-attach when remote socket changes
 
   // Update remote video when stream changes
   useEffect(() => {
@@ -223,6 +249,8 @@ const MeetingRoom = () => {
 
   // Send ICE candidates to remote peer
   useEffect(() => {
+    if (!peerService.peer || !remoteSocketId) return;
+
     const handleIceCandidateEvent = (event: RTCPeerConnectionIceEvent) => {
       if (event.candidate && remoteSocketId) {
         console.log("Sending ICE candidate to:", remoteSocketId);
@@ -233,10 +261,11 @@ const MeetingRoom = () => {
       }
     };
 
-    peerService.peer.addEventListener("icecandidate", handleIceCandidateEvent);
+    const currentPeer = peerService.peer;
+    currentPeer.addEventListener("icecandidate", handleIceCandidateEvent);
 
     return () => {
-      peerService.peer.removeEventListener("icecandidate", handleIceCandidateEvent);
+      currentPeer.removeEventListener("icecandidate", handleIceCandidateEvent);
     };
   }, [remoteSocketId, webSocket]);
 
@@ -335,6 +364,11 @@ const MeetingRoom = () => {
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
+  // Add state to track if host status has been determined
+  const [hostStatusDetermined, setHostStatusDetermined] = useState(false);
+  // Add state to track if join request has been sent (to prevent duplicates)
+  const [joinRequestSent, setJoinRequestSent] = useState(false);
+
   // Fetch meeting details to determine host
   useEffect(() => {
     const fetchMeetingDetails = async () => {
@@ -348,7 +382,13 @@ const MeetingRoom = () => {
           // Check if current user is the host
           if (session?.user?._id === data.meeting.createdBy) {
             setIsHost(true);
+            setIsJoined(true); // Host can join directly
+            console.log("User is the host");
+          } else {
+            // Non-host authenticated users need to request admission
+            console.log("User is not the host, will request admission");
           }
+          setHostStatusDetermined(true);
         }
       } catch (error) {
         console.error("Error fetching meeting details:", error);
@@ -357,6 +397,9 @@ const MeetingRoom = () => {
 
     if (status === "authenticated" && session) {
       fetchMeetingDetails();
+    } else if (status === "unauthenticated") {
+      // For guest users, they are never the host
+      setHostStatusDetermined(true);
     }
   }, [room_id, session, status]);
 
@@ -366,9 +409,9 @@ const MeetingRoom = () => {
 
     if (status === "unauthenticated") {
       setShowNicknameModal(true);
-      setIsJoined(true);
     } else if (status === "authenticated") {
-      setIsJoined(true);
+      // Authenticated users also need to wait for admission (unless they are the host)
+      // We'll check if they're the host after fetching meeting details
     }
   }, [status]);
 
@@ -435,6 +478,32 @@ const MeetingRoom = () => {
       console.log("Sent offer to:", currentRequest.socketId);
     } catch (error) {
       console.error("Error creating offer:", error);
+
+      // If there's an error (like m-lines order), reset and retry
+      if (error instanceof Error && error.message.includes("m-line")) {
+        console.log("Resetting peer connection and retrying...");
+        peerService.resetPeerConnection();
+
+        // Re-add local tracks
+        if (localVideoRef.current?.srcObject) {
+          const stream = localVideoRef.current.srcObject as MediaStream;
+          for (const track of stream.getTracks()) {
+            peerService.peer.addTrack(track, stream);
+          }
+        }
+
+        // Retry creating offer
+        try {
+          const retryOffer = await peerService.getOffer();
+          webSocket?.emit("offer", {
+            to: currentRequest.socketId,
+            offer: retryOffer,
+          });
+          console.log("Retry: Sent offer to:", currentRequest.socketId);
+        } catch (retryError) {
+          console.error("Retry failed:", retryError);
+        }
+      }
     }
 
     // Remove from queue and show next request if any
@@ -491,6 +560,14 @@ const MeetingRoom = () => {
 
   // Handle admission response for guest users
   const handleAdmissionResponse = useCallback((data: { admitted: boolean; hostName?: string; hostSocketId?: string }) => {
+    // Only process if not the host (host shouldn't receive admission responses)
+    if (isHost) {
+      console.log("Host received admission_response, ignoring...");
+      return;
+    }
+
+    console.log("Admission response received:", data);
+
     if (data.admitted) {
       // Play success notification sound
       playNotificationSound('admitted');
@@ -507,9 +584,12 @@ const MeetingRoom = () => {
       }
     } else {
       toast.error("Your request was denied by the host");
-      // Optionally redirect or show retry option
+      // Redirect user after denial ONLY for non-host
+      setTimeout(() => {
+        router.push('/');
+      }, 2000);
     }
-  }, []);
+  }, [isHost, router]);
 
   const handleJoinRoom = useCallback((data: { roomId: string }) => {
     console.log("Room is joined", data);
@@ -541,23 +621,13 @@ const MeetingRoom = () => {
       if (isHost) {
         toast.info(`${username} joined the meeting`);
 
-        // Set remote user name (guest's nickname)
-        setRemoteUserName(username);
-        setRemoteSocketId(socketId);
-
-        try {
-          const offer = await peerService.getOffer();
-          webSocket?.emit("offer", {
-            to: socketId,
-            offer,
-          });
-          console.log("Sent offer to new user:", socketId);
-        } catch (error) {
-          console.error("Error creating offer for new user:", error);
-        }
+        // Don't create offer here - it's already created in handleAdmit
+        // This prevents the "order of m-lines" error from creating multiple offers
+        // Just log the event for now
+        console.log("User successfully joined the room:", username);
       }
     },
-    [isHost, webSocket]
+    [isHost]
   );
 
   // Handle when another user leaves the room
@@ -586,13 +656,41 @@ const MeetingRoom = () => {
   useEffect(() => {
     if (!webSocket) return;
 
-    // If authenticated user, join directly
+    // Wait for host status to be determined before emitting socket events
+    if (!hostStatusDetermined) {
+      console.log("Waiting for host status to be determined...");
+      return;
+    }
+
+    // Prevent duplicate join requests
+    if (joinRequestSent) {
+      console.log("Join request already sent, skipping...");
+      return;
+    }
+
+    // If authenticated user and HOST, join directly
+    // If authenticated user but NOT host, request admission
     if (status === "authenticated" && session) {
-      webSocket.emit("join_room", {
-        roomId: room_id,
-        userId: session.user._id,
-        username: session.user.username,
-      });
+      if (isHost) {
+        console.log("Host joining room directly...");
+        webSocket.emit("join_room", {
+          roomId: room_id,
+          userId: session.user._id,
+          username: session.user.username,
+        });
+        setJoinRequestSent(true);
+      } else {
+        // Non-host authenticated users need to request admission
+        console.log("Non-host requesting admission...");
+        webSocket.emit("request_join", {
+          roomId: room_id,
+          userId: session.user._id,
+          nickname: session.user.username,
+          profilePicture: session.user.image,
+          isLoggedIn: true,
+        });
+        setJoinRequestSent(true);
+      }
     }
 
     webSocket.on("join_room", handleJoinRoom);
@@ -621,6 +719,8 @@ const MeetingRoom = () => {
     room_id,
     status,
     session,
+    isHost,
+    hostStatusDetermined,
     handleJoinRoom,
     handleUserJoined,
     handleUserLeft,
@@ -633,13 +733,24 @@ const MeetingRoom = () => {
   ]);
 
   // Don't render meeting UI until user is joined
-  if (!isJoined && status !== "authenticated") {
+  // Show waiting screen only for non-host users
+  if (!isJoined) {
     return (
       <div className="h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground">
-            Waiting to join the meeting...
-          </p>
+        <div className="text-center space-y-4">
+          <div className="flex justify-center">
+            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <div>
+            <p className="text-lg font-semibold text-foreground">
+              Waiting for host approval...
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              {status === "authenticated" && session
+                ? `${session.user.username}, please wait while the host reviews your request`
+                : "Please wait while the host reviews your request"}
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -675,9 +786,29 @@ const MeetingRoom = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Join Request</AlertDialogTitle>
-            <AlertDialogDescription>
-              {currentRequest?.nickname} wants to join the meeting. Do you want
-              to admit them?
+            <AlertDialogDescription asChild>
+              <div className="flex items-center gap-4 py-4">
+                <Avatar className="h-16 w-16 border-2 border-primary">
+                  {currentRequest?.profilePicture ? (
+                    <AvatarImage src={currentRequest.profilePicture} alt={currentRequest.nickname} />
+                  ) : (
+                    <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
+                      {currentRequest?.nickname?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <div className="flex-1">
+                  <p className="text-base font-semibold text-foreground">
+                    {currentRequest?.nickname}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {currentRequest?.isLoggedIn ? "Registered User" : "Guest User"}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    wants to join the meeting
+                  </p>
+                </div>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
