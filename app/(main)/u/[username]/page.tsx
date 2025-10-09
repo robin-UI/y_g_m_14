@@ -62,9 +62,9 @@ export default function PublicProfilePage() {
 
       // TODO: Replace with actual API call to fetch user data by username
       const response = await axios(`/api/profile?username=${username}`);
-      if (response.statusText !== "OK") {
-        throw new Error("User not found");
-      }
+      // if (response.statusText !== "OK") {
+      //   throw new Error("User not found");
+      // }
       const userData = response.data;
 
       let userStatData : UserData = {
