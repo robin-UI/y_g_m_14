@@ -263,19 +263,51 @@ const MeetingRoom = () => {
   };
 
   const handleEndCall = () => {
+    // Stop all local media tracks
     if (localVideoRef.current?.srcObject) {
       const stream = localVideoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach((track) => track.stop());
+      stream.getTracks().forEach((track) => {
+        track.stop();
+        track.enabled = false;
+      });
+      localVideoRef.current.srcObject = null;
     }
+
+    // Stop all remote media tracks
+    if (remoteVideoRef.current?.srcObject) {
+      const stream = remoteVideoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach((track) => {
+        track.stop();
+        track.enabled = false;
+      });
+      remoteVideoRef.current.srcObject = null;
+    }
+
+    // Remove all tracks from peer connection before closing
+    const senders = peerService.peer.getSenders();
+    senders.forEach((sender) => {
+      if (sender.track) {
+        sender.track.stop();
+      }
+      peerService.peer.removeTrack(sender);
+    });
 
     // Close peer connection
     peerService.peer.close();
 
-    // Emit leave event to socket
-    webSocket?.emit("leave_room", { roomId: room_id });
+    // Clear remote stream state
+    setRemoteStream(null);
+    setRemoteSocketId("");
+    setRemoteUserName("");
+
+    // Emit leave event to socket with user info
+    webSocket?.emit("leave_room", {
+      roomId: room_id,
+      username: session?.user?.username || nickname || "Guest"
+    });
 
     toast("Call Ended", {
-      description: "The meeting has been ended",
+      description: "You have left the meeting",
     });
 
     // Redirect based on user type
@@ -534,25 +566,20 @@ const MeetingRoom = () => {
       console.log("User left:", username);
       toast.info(`${username} left the meeting`);
 
-      // Stop local media
-      if (localVideoRef.current?.srcObject) {
-        const stream = localVideoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach((track) => track.stop());
+      // Clear remote user's video feed
+      setRemoteStream(null);
+      setRemoteUserName("");
+      setRemoteSocketId("");
+
+      // Clear remote video element
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = null;
       }
 
-      // Close peer connection
-      peerService.peer.close();
-
-      // Redirect based on user type
-      setTimeout(() => {
-        if (isHost) {
-          router.push('/meetings');
-        } else {
-          router.push('/');
-        }
-      }, 1500);
+      // Note: Do NOT stop local media or redirect
+      // The remaining user should stay in the room
     },
-    [isHost, router]
+    []
   );
 
   // Socket event listeners

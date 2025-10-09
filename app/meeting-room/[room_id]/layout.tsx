@@ -6,11 +6,7 @@ function layout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <SocketProvider>
-      <section>{children}</section>;
-    </SocketProvider>
-  );
+  return <SocketProvider>{children}</SocketProvider>;
 }
 
 export default layout;
